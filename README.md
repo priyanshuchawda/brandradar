@@ -11,7 +11,7 @@ See the market. Heal the scraper. Grow the brand.
 1. **Discover** rival brand sites in the same category (ecommerce, edtech, or food).
 2. **Collect** structured rows with custom Bright Data Scraper Studio collectors (listing + product detail).
 3. **Compare** brand vs rivals on a shared schema.
-4. **Recommend** three plays (price gap, rating gap, promo, catalog hole, stock window).
+4. **Recommend** three plays: **attack** a leak, **defend** a win, or **fill** a hole — with why it grows the brand.
 5. **Repair** extractors when a field comes back null — same collector id, preview, then approve.
 
 Numbers come from extracted rows. Language models only rewrite play copy. They do not invent prices.
