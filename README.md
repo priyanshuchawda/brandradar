@@ -32,6 +32,24 @@ Growing brands lose share to competitors they cannot see in real time. Prices, S
 | Vaishnavi Repal | Domain-agnostic CI framing |
 | Sneha Barge | Prototype: 2–3 domains |
 
+## Run the app
+
+```bash
+cd brandradar
+cp .env.example .env.local   # keys optional for now
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000). Without Bright Data / Gemini keys the arena runs on **mock public-shaped data** so we can build UI and the heal loop today.
+
+Keys (paste into `.env.local` when asked):
+
+- `BRIGHT_DATA_API_TOKEN` + collector ids `c_*` — live scrape
+- `GEMINI_API_KEY` — optional rewrite of play copy (numbers stay rule-based)
+
+Do not commit `.env.local`.
+
 ## Repo map
 
 | Path | What it is |
