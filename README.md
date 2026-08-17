@@ -12,6 +12,10 @@ BrandRadar is our project for [Into the Scrape-Verse](https://www.wemakedevs.org
 
 Growing brands lose share to competitors they cannot see in real time. Prices, SKUs, course fees, menu items, and public reviews change daily. Most teams still check this by hand, or with scrapers that silently die after a class-name change. BrandRadar is the always-on arena: **see the market, heal the scraper, grow the brand.**
 
+## AI disclosure
+
+Cursor, Bright Data Scraper Studio (AI Agent / CLI), and Gemini 3.1 Flash-Lite were used. We can explain the scraper, architecture, and every API call. Details: [docs/scraper-studio.md](docs/scraper-studio.md).
+
 ## What judges should see
 
 | Criterion | How we hit it |
@@ -41,7 +45,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Without Bright Data / Gemini keys the arena runs on **mock public-shaped data** so we can build UI and the heal loop today.
+Open [http://localhost:3000](http://localhost:3000). With Bright Data + Gemini keys, Discover + Flash-Lite return a **live** catalog. Custom Scraper Studio collectors (`c_*` in `.env.local`) are the scored path: create with `scripts/studio-create.sh`, then set `USE_MOCK=false`. Heal/approve from the dashboard or `scripts/studio.sh`.
 
 GitHub (scripts only — do not `git push` / `gh pr` / `gh issue` by hand):
 
@@ -74,9 +78,9 @@ Do not commit `.env.local`.
 | [docs/stack.md](docs/stack.md) | Why full TypeScript, not Python |
 | [docs/architecture.md](docs/architecture.md) | App + collectors + self-heal loop |
 | [docs/hackathon.md](docs/hackathon.md) | Extracted hackathon brief, rules, prizes, judging |
-| [docs/brightdata.md](docs/brightdata.md) | How to use Scraper Studio, CLI, API, self-heal |
+| [docs/scraper-studio.md](docs/scraper-studio.md) | How Scraper Studio is used (judges) |
 | [prompts/cursor.md](prompts/cursor.md) | Copy-paste prompts for Cursor / Claude Code / Codex |
-| [scripts/](scripts/) | `push.sh` / `pr.sh` / `issue.sh` — GitHub only through these |
+| [scripts/](scripts/) | `push.sh` / `pr.sh` / `issue.sh` / `studio.sh` / `studio-create.sh` |
 
 ## Hard rules we will not break
 

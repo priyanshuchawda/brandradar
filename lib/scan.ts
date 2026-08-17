@@ -16,11 +16,31 @@ function asNumber(value: unknown): number | null {
     const parsed = Number(value.replace(/[^0-9.]/g, ""));
     return Number.isFinite(parsed) ? parsed : null;
   }
+  if (value && typeof value === "object" && "value" in value) {
+    return asNumber((value as { value: unknown }).value);
+  }
   return null;
 }
 
 function asString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function nestedUrl(row: Record<string, unknown>): string | null {
+  const input = row.input;
+  if (input && typeof input === "object" && "url" in input) {
+    return asString((input as { url: unknown }).url);
+  }
+  return null;
+}
+
+function collapseRepeatedName(name: string): string {
+  const trimmed = name.trim();
+  const mid = Math.floor(trimmed.length / 2);
+  const left = trimmed.slice(0, mid).trim();
+  const right = trimmed.slice(mid).trim();
+  if (left && left === right) return left;
+  return trimmed;
 }
 
 function asBool(value: unknown): boolean {
@@ -38,12 +58,19 @@ function rowToItem(
   collectorId: string,
   runId: string | null,
 ): Item | null {
-  const name =
+  const name = collapseRepeatedName(
     asString(row.name) ||
-    asString(row.title) ||
-    asString(row.product_name) ||
-    asString(row.course_name);
-  const url = asString(row.url) || asString(row.product_url) || asString(row.link);
+      asString(row.title) ||
+      asString(row.product_name) ||
+      asString(row.course_name) ||
+      "",
+  );
+  const url =
+    asString(row.url) ||
+    asString(row.product_url) ||
+    asString(row.product_page_url) ||
+    asString(row.link) ||
+    nestedUrl(row);
   if (!name || !url) return null;
 
   const availabilityRaw =
@@ -62,8 +89,13 @@ function rowToItem(
     rival_name: rivalName,
     name,
     url,
-    price: asNumber(row.price) ?? asNumber(row.sale_price),
-    currency: asString(row.currency) || "INR",
+    price: asNumber(row.price) ?? asNumber(row.sale_price) ?? asNumber(row.list_price),
+    currency:
+      asString(row.currency) ||
+      (row.price && typeof row.price === "object" && "currency" in row.price
+        ? asString((row.price as { currency: unknown }).currency)
+        : null) ||
+      "INR",
     availability,
     rating: asNumber(row.rating) ?? asNumber(row.stars),
     review_count: asNumber(row.review_count) ?? asNumber(row.reviews),
@@ -90,8 +122,15 @@ async function scrapeLive(request: ScanRequest): Promise<Snapshot> {
   );
 
   const pdpUrls = listingRows
-    .map((row) => asString(row.url) || asString(row.product_url))
-    .filter((url): url is string => Boolean(url))
+    .map(
+      (row) =>
+        asString(row.product_url) ||
+        asString(row.product_page_url) ||
+        asString(row.url) ||
+        nestedUrl(row),
+    )
+    .filter((url): url is string => Boolean(url) && !url.endsWith("/shop"))
+    .filter((url, index, all) => all.indexOf(url) === index)
     .slice(0, 12);
 
   const details =
@@ -103,8 +142,14 @@ async function scrapeLive(request: ScanRequest): Promise<Snapshot> {
 
   const items: Item[] = [];
   for (const row of detailRows) {
-    const url = asString(row.url) || asString(row.product_url) || "";
-    const source: Item["source"] = url.startsWith(brandUrl) ? "brand" : "rival";
+    const url =
+      asString(row.url) ||
+      asString(row.product_url) ||
+      asString(row.product_page_url) ||
+      nestedUrl(row) ||
+      "";
+    const source: Item["source"] =
+      hostnameLabel(url, "") === hostnameLabel(brandUrl, "") ? "brand" : "rival";
     const rivalName =
       source === "rival"
         ? hostnameLabel(url, "Rival")
@@ -136,7 +181,9 @@ async function scrapeLive(request: ScanRequest): Promise<Snapshot> {
       broken_fields: [],
     },
     mode: "live",
-    notes: [],
+    notes: [
+      `Studio collectors: discovery ${discoveryId}, pdp ${pdpId}. PDP prices overwrite listing mashups.`,
+    ],
   };
 
   return attachInsights(snapshot);

@@ -17,10 +17,7 @@ export function hasBrightDataToken(): boolean {
   return Boolean(token());
 }
 
-export function collectorIdFor(
-  domain: Domain,
-  kind: CollectorKind,
-): string | undefined {
+function dedicatedCollector(domain: Domain, kind: CollectorKind): string | undefined {
   const key = {
     ecommerce: {
       discovery: process.env.COLLECTOR_ECOMMERCE_DISCOVERY,
@@ -35,17 +32,21 @@ export function collectorIdFor(
       pdp: process.env.COLLECTOR_FOOD_PDP,
     },
   }[domain][kind];
+  return key?.trim() || undefined;
+}
 
-  const fallback = process.env.BRIGHT_DATA_COLLECTOR_ID;
-  const id = (key || fallback)?.trim();
-  return id || undefined;
+export function collectorIdFor(
+  domain: Domain,
+  kind: CollectorKind,
+): string | undefined {
+  return dedicatedCollector(domain, kind) || process.env.BRIGHT_DATA_COLLECTOR_ID?.trim() || undefined;
 }
 
 export function liveCollectorsReady(domain: Domain): boolean {
   return (
     hasBrightDataToken() &&
-    Boolean(collectorIdFor(domain, "discovery")) &&
-    Boolean(collectorIdFor(domain, "pdp"))
+    Boolean(dedicatedCollector(domain, "discovery")) &&
+    Boolean(dedicatedCollector(domain, "pdp"))
   );
 }
 

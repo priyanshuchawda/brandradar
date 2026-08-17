@@ -43,7 +43,7 @@ brandradar/
 | UI | Tailwind + shadcn/ui | Fast, looks finished. Suit-Up track. |
 | Bright Data **Discover** | `POST /discover/sync` | Rival homepages only. `mode=fast`, `num_results=5`, no page body, 6h cache. |
 | Bright Data **run** | Collection API from **server** route handlers | Port `runScraper` / `triggerWithUrls`. Token never in the browser. |
-| Bright Data **create / heal** | `npx -p @brightdata/cli bdata …` | CLI is Node. Health panel can shell this or call AI Flow later; week-1 is CLI + show the envelope. |
+| Bright Data **create / heal** | `scripts/studio-create.sh` / `scripts/studio.sh` | CLI is Node. Health panel shells heal/approve on the same `c_*`. |
 | Validation | Zod | Same shape as `examples/sample-output.json` |
 | Store | JSON files under `data/` (SQLite only if we have time) | Week-sized. Two snapshots = “this run vs last”. |
 | Insights | TypeScript rules first, **Gemini 3.1 Flash-Lite** rewrite of play copy | Flash-Lite only. JSON mime type. Thinking minimal. Numbers stay deterministic. |
@@ -74,7 +74,7 @@ Docs: [API quickstart](https://docs.brightdata.com/api-reference/scraper-studio-
 | Scraper Studio `/dca/trigger` | Collector IDs exist and `USE_MOCK=false` | Shortlist ≤12 PDPs |
 | Library scrapers (Amazon, LinkedIn, …) | Never as the scored scraper | Hackathon DQ |
 
-Until collectors exist: Discover finds real rival homepages, catalog rows stay a demo fixture, self-heal is simulated on that fixture.
+Until both Discovery + PDP ids exist: Discover + Gemini extract live snippets; heal is simulated. With ids and `USE_MOCK=false`, `/dca/trigger` is first and the health panel shells `scripts/studio.sh heal|approve` on the same `c_*`.
 
 ## What we explicitly will not add
 
