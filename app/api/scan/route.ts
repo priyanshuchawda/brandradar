@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { geminiConfigured } from "@/lib/gemini";
+import { liveCollectorsReady } from "@/lib/brightdata";
+import { discoverEnabled } from "@/lib/discover";
+import { geminiConfigured, geminiModel } from "@/lib/gemini";
 import { ScanRequestSchema } from "@/lib/schema";
 import { runScan } from "@/lib/scan";
-import { liveCollectorsReady } from "@/lib/brightdata";
 
 export const maxDuration = 300;
 
@@ -22,9 +23,11 @@ export async function POST(request: Request) {
 
 export async function GET() {
   return NextResponse.json({
-    mockForced: process.env.USE_MOCK === "true",
+    mockForced: process.env.USE_MOCK !== "false",
     brightDataToken: Boolean(process.env.BRIGHT_DATA_API_TOKEN?.trim()),
+    discover: discoverEnabled(),
     gemini: geminiConfigured(),
+    geminiModel: geminiModel(),
     live: {
       ecommerce: liveCollectorsReady("ecommerce"),
       edtech: liveCollectorsReady("edtech"),

@@ -6,7 +6,9 @@ import type { Domain, Snapshot } from "@/lib/schema";
 type Status = {
   mockForced: boolean;
   brightDataToken: boolean;
+  discover: boolean;
   gemini: boolean;
+  geminiModel?: string;
   live: Record<Domain, boolean>;
 };
 
@@ -220,12 +222,12 @@ function StatusStrip({
   domain: Domain;
 }) {
   if (!status) return null;
-  const live = status.live[domain];
   return (
     <div className="flex flex-wrap gap-2 font-mono text-[11px]">
-      <Pill ok={!status.mockForced && live} label={live ? "live collectors" : "mock arena"} />
-      <Pill ok={status.brightDataToken} label="bright data token" />
-      <Pill ok={status.gemini} label="gemini" />
+      <Pill ok={status.discover} label="discover" />
+      <Pill ok={status.live[domain]} label={status.live[domain] ? "studio live" : "studio mock"} />
+      <Pill ok={status.brightDataToken} label="bright data" />
+      <Pill ok={status.gemini} label={status.geminiModel ?? "gemini"} />
     </div>
   );
 }

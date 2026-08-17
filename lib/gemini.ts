@@ -1,18 +1,27 @@
 import type { Play } from "./schema";
 
+const FLASH_LITE = "gemini-3.1-flash-lite";
+
 export function geminiConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY?.trim());
+}
+
+export function geminiModel(): string {
+  const requested = process.env.GEMINI_MODEL?.trim() || FLASH_LITE;
+  if (requested.includes("flash-lite") || requested.includes("flash_lite")) {
+    return requested;
+  }
+  return FLASH_LITE;
 }
 
 export async function polishPlays(plays: Play[]): Promise<Play[]> {
   const key = process.env.GEMINI_API_KEY?.trim();
   if (!key || plays.length === 0) return plays;
 
-  const model = process.env.GEMINI_MODEL?.trim() || "gemini-2.0-flash";
-  const prompt = `You rewrite growth plays for a competitive-intelligence product.
-Keep every number, SKU name, and rival name exactly as given.
-Return JSON only: an array of {title, evidence, action, signal_type} with the same length and signal_type values.
-Make titles short. Evidence cites the numbers. Action is something a founder can do this week.
+  const model = geminiModel();
+  const prompt = `Rewrite these growth plays. Keep every number, SKU, and rival name unchanged.
+Return a JSON array of {title, evidence, action, signal_type} with the same length and signal_type values.
+Titles: max 6 words. Evidence: cite the numbers. Action: one thing a founder can do this week.
 
 Input:
 ${JSON.stringify(plays)}`;
@@ -24,7 +33,11 @@ ${JSON.stringify(plays)}`;
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2 },
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: "application/json",
+          thinkingConfig: { thinkingLevel: "minimal" },
+        },
       }),
     },
   );
@@ -37,8 +50,14 @@ ${JSON.stringify(plays)}`;
     candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
   };
   const text = payload.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-  const jsonText = text.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
-  const parsed = JSON.parse(jsonText) as Play[];
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const raw = (fenced?.[1] ?? text).trim();
+  const start = raw.indexOf("[");
+  const end = raw.lastIndexOf("]");
+  if (start === -1 || end === -1) {
+    throw new Error("Gemini did not return a JSON array");
+  }
+  const parsed = JSON.parse(raw.slice(start, end + 1)) as Play[];
   if (!Array.isArray(parsed) || parsed.length === 0) return plays;
   return parsed.map((play, index) => ({
     title: play.title || plays[index].title,

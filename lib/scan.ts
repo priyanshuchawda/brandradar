@@ -1,4 +1,5 @@
 import { collectorIdFor, liveCollectorsReady, triggerWithUrls } from "./brightdata";
+import { discoverEnabled, discoverRivals } from "./discover";
 import { polishPlays } from "./gemini";
 import { buildMockSnapshot } from "./mock";
 import { attachInsights, ensureUrl, hostnameLabel } from "./plays";
@@ -138,27 +139,43 @@ async function scrapeLive(request: ScanRequest): Promise<Snapshot> {
 
 export async function runScan(request: ScanRequest): Promise<Snapshot> {
   const brandUrl = ensureUrl(request.brandUrl);
+  let rivalUrls = request.rivalUrls.map(ensureUrl).filter(Boolean);
+  const notes: string[] = [];
+
+  if (rivalUrls.length === 0 && discoverEnabled()) {
+    try {
+      const found = await discoverRivals({
+        brandUrl,
+        brandName: request.brandName,
+        domain: request.domain,
+      });
+      rivalUrls = found.rivals.map((rival) => rival.url);
+      notes.push(found.note);
+    } catch (error) {
+      notes.push(
+        `Discover skipped: ${error instanceof Error ? error.message : "unknown error"}`,
+      );
+    }
+  }
+
   const useMock =
     request.forceMock ||
-    process.env.USE_MOCK === "true" ||
+    process.env.USE_MOCK !== "false" ||
     !liveCollectorsReady(request.domain);
 
   if (useMock) {
-    const reasons: string[] = [];
-    if (process.env.USE_MOCK === "true") {
-      reasons.push("USE_MOCK=true");
+    if (process.env.USE_MOCK !== "false") {
+      notes.push("Catalog is a demo fixture until Scraper Studio collector IDs exist.");
     }
     if (!liveCollectorsReady(request.domain)) {
-      reasons.push(
-        "No Bright Data token + discovery/PDP collector IDs yet — using the mock arena.",
-      );
+      notes.push("No discovery/PDP collector IDs yet — not calling /dca/trigger.");
     }
     const snapshot = buildMockSnapshot({
       brandUrl,
       brandName: request.brandName,
       domain: request.domain,
-      rivalUrls: request.rivalUrls.map(ensureUrl).filter(Boolean),
-      notes: reasons,
+      rivalUrls,
+      notes,
     });
     try {
       snapshot.plays = await polishPlays(snapshot.plays);
@@ -171,7 +188,8 @@ export async function runScan(request: ScanRequest): Promise<Snapshot> {
   }
 
   try {
-    const snapshot = await scrapeLive(request);
+    const snapshot = await scrapeLive({ ...request, rivalUrls });
+    snapshot.notes = [...notes, ...snapshot.notes];
     try {
       snapshot.plays = await polishPlays(snapshot.plays);
     } catch (error) {
@@ -181,15 +199,15 @@ export async function runScan(request: ScanRequest): Promise<Snapshot> {
     }
     return snapshot;
   } catch (error) {
-    const snapshot = buildMockSnapshot({
+    return buildMockSnapshot({
       brandUrl,
       brandName: request.brandName,
       domain: request.domain,
-      rivalUrls: request.rivalUrls.map(ensureUrl).filter(Boolean),
+      rivalUrls,
       notes: [
+        ...notes,
         `Live scrape failed (${error instanceof Error ? error.message : "unknown"}). Fell back to mock so the arena still renders.`,
       ],
     });
-    return snapshot;
   }
 }

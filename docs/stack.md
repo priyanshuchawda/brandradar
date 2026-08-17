@@ -41,11 +41,12 @@ brandradar/
 | --- | --- | --- |
 | App | **Next.js** (App Router) + **TypeScript** | UI + API in one repo. Deploy on Vercel for the demo. |
 | UI | Tailwind + shadcn/ui | Fast, looks finished. Suit-Up track. |
+| Bright Data **Discover** | `POST /discover/sync` | Rival homepages only. `mode=fast`, `num_results=5`, no page body, 6h cache. |
 | Bright Data **run** | Collection API from **server** route handlers | Port `runScraper` / `triggerWithUrls`. Token never in the browser. |
 | Bright Data **create / heal** | `npx -p @brightdata/cli bdata …` | CLI is Node. Health panel can shell this or call AI Flow later; week-1 is CLI + show the envelope. |
 | Validation | Zod | Same shape as `examples/sample-output.json` |
 | Store | JSON files under `data/` (SQLite only if we have time) | Week-sized. Two snapshots = “this run vs last”. |
-| Insights | TypeScript rules first, optional LLM rewrite of play copy | Numbers stay deterministic |
+| Insights | TypeScript rules first, **Gemini 3.1 Flash-Lite** rewrite of play copy | Flash-Lite only. JSON mime type. Thinking minimal. Numbers stay deterministic. |
 | Node | 20+ | Matches `fetch` in the official starter |
 
 ## How the official Node starter maps onto us
@@ -60,6 +61,20 @@ Their script:
 We copy that behavior into `lib/brightdata.ts` (TypeScript, typed inputs). We do **not** vendor their whole repo as the app.
 
 Docs: [API quickstart](https://docs.brightdata.com/api-reference/scraper-studio-api/Getting_started_with_the_API) (cURL / Node / Python side by side).
+
+## Cheap usage (hackathon week)
+
+**Gemini:** `gemini-3.1-flash-lite` only. It rewrites the 3 play titles. It does not pick rivals, invent prices, or scrape. `responseMimeType=application/json` + `thinkingLevel=minimal`.
+
+**Bright Data — two products, one token:**
+
+| Call | When | Cost control |
+| --- | --- | --- |
+| Discover `/discover/sync` | User left rival URLs empty | Fast mode, 5 results, no `include_content`, cache 6h |
+| Scraper Studio `/dca/trigger` | Collector IDs exist and `USE_MOCK=false` | Shortlist ≤12 PDPs |
+| Library scrapers (Amazon, LinkedIn, …) | Never as the scored scraper | Hackathon DQ |
+
+Until collectors exist: Discover finds real rival homepages, catalog rows stay a demo fixture, self-heal is simulated on that fixture.
 
 ## What we explicitly will not add
 

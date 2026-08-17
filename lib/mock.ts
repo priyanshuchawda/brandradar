@@ -259,12 +259,17 @@ export function buildMockSnapshot(input: {
     input.brandName?.trim() || hostnameLabel(input.brandUrl, "Brand");
   const brandUrl = input.brandUrl;
 
-  const rivals = catalog.rivals.map((rival, index) => ({
-    name: rival.name,
-    url:
+  const rivals = catalog.rivals.map((rival, index) => {
+    const url =
       input.rivalUrls[index] ||
-      `https://${rival.name.toLowerCase().replace(/\s+/g, "")}.example`,
-  }));
+      `https://${rival.name.toLowerCase().replace(/\s+/g, "")}.example`;
+    return {
+      name: input.rivalUrls[index]
+        ? hostnameLabel(input.rivalUrls[index], rival.name)
+        : rival.name,
+      url,
+    };
+  });
 
   const items: Item[] = [
     ...catalog.brandItems.map((entry) =>
@@ -280,7 +285,7 @@ export function buildMockSnapshot(input: {
         item({
           ...entry,
           source: "rival",
-          rival_name: rival.name,
+          rival_name: rivals[index]?.name ?? rival.name,
           url: new URL(
             entry.url,
             `${rivals[index].url.endsWith("/") ? rivals[index].url : `${rivals[index].url}/`}`,

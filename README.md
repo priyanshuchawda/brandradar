@@ -43,6 +43,22 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). Without Bright Data / Gemini keys the arena runs on **mock public-shaped data** so we can build UI and the heal loop today.
 
+GitHub (scripts only — do not `git push` / `gh pr` / `gh issue` by hand):
+
+```bash
+chmod +x scripts/*.sh
+scripts/push.sh "Commit message here."
+scripts/issue.sh "Issue title" <<'EOF'
+Body
+EOF
+scripts/pr.sh "PR title" <<'EOF'
+## Summary
+- ...
+EOF
+```
+
+Identity stays the existing local git user (`priyanshuchawda`). The scripts never run `git config`.
+
 Keys (paste into `.env.local` when asked):
 
 - `BRIGHT_DATA_API_TOKEN` + collector ids `c_*` — live scrape
@@ -60,7 +76,7 @@ Do not commit `.env.local`.
 | [docs/hackathon.md](docs/hackathon.md) | Extracted hackathon brief, rules, prizes, judging |
 | [docs/brightdata.md](docs/brightdata.md) | How to use Scraper Studio, CLI, API, self-heal |
 | [prompts/cursor.md](prompts/cursor.md) | Copy-paste prompts for Cursor / Claude Code / Codex |
-| [examples/sample-output.json](examples/sample-output.json) | Example structured output shape |
+| [scripts/](scripts/) | `push.sh` / `pr.sh` / `issue.sh` — GitHub only through these |
 
 ## Hard rules we will not break
 
