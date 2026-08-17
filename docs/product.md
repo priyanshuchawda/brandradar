@@ -41,17 +41,18 @@ Each collector has one shape (listing or product detail). Do not pass a homepage
 
 Fintech pricing pages are a poor default: too much sits behind login.
 
-## Plays
+## Monday brief
 
-Every signal maps to an action. The model may rewrite wording; it does not invent numbers.
+Plays are not three copies of “match the price.” Each scan ranks signals and returns at most three moves:
 
-| Signal | Example play |
-| --- | --- |
-| Brand 12–18% above rival on the same SKU | Match the hero SKU, or bundle to defend margin |
-| Rival added SKUs the brand lacks | Fill the missing size / flavor / module |
-| Rating 3.9 vs category 4.4 | Fix PDP copy around public complaints; ask for reviews |
-| Rival discounting the overlap; brand is full price | Limited promo on that SKU only |
-| Rival out of stock on a hero item | Merchandize that SKU until stock returns |
+| Kind | When | How it grows the brand |
+| --- | --- | --- |
+| **Defend** | You already win on price *and* rating | Push that SKU (homepage, ads). Do not discount a winner. |
+| **Attack** | Price gap, trust gap, rival OOS, or rival promo you have not answered | Fix the leak on that SKU only — not a sitewide sale. |
+| **Fill** | Rival lists a shape you do not | You are invisible in that search. List it or merchandize the closest SKU. |
+
+A SKU already on list-price cut is not told to “run a promo.” Review *volume* counts as trust, not only the star rating.
+
 
 ## Out of scope (for now)
 

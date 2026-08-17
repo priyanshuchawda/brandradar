@@ -350,18 +350,30 @@ function Dashboard({
         />
       </div>
 
+      <div>
+        <h3 className="text-sm font-semibold tracking-tight">This week’s brief</h3>
+        <p className="text-xs text-muted">
+          Attack a leak, defend a win, or fill a hole. Not three copies of “match the price.”
+        </p>
+      </div>
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {snapshot.plays.map((play, index) => (
           <article
             key={`${play.title}-${index}`}
             className="rounded-2xl border border-line bg-panel p-4"
           >
-            <p className="font-mono text-[11px] uppercase tracking-wider text-ping">
-              Play 0{index + 1}
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-mono text-[11px] uppercase tracking-wider text-ping">
+                Play 0{index + 1}
+              </p>
+              <span className="rounded-full border border-line px-2 py-0.5 font-mono text-[10px] uppercase text-muted">
+                {play.kind} · {play.impact}
+              </span>
+            </div>
             <h3 className="mt-2 text-base font-semibold leading-snug">{play.title}</h3>
             <p className="mt-2 text-sm text-muted">{play.evidence}</p>
             <p className="mt-3 text-sm">{play.action}</p>
+            <p className="mt-3 text-xs text-ping">{play.why_it_grows}</p>
           </article>
         ))}
       </div>

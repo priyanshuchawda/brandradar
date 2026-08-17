@@ -94,7 +94,8 @@ export function rowToItem(
     rival_name: rivalName,
     name,
     url,
-    price: asNumber(row.price) ?? asNumber(row.sale_price) ?? asNumber(row.list_price),
+    price: asNumber(row.price) ?? asNumber(row.sale_price),
+    list_price: asNumber(row.list_price),
     currency:
       asString(row.currency) ||
       (row.price && typeof row.price === "object" && "currency" in row.price
@@ -104,7 +105,16 @@ export function rowToItem(
     availability,
     rating: asNumber(row.rating) ?? asNumber(row.stars),
     review_count: asNumber(row.review_count) ?? asNumber(row.reviews),
-    promo: asBool(row.promo) || asBool(row.discount) || asBool(row.badge),
+    promo:
+      asBool(row.promo) ||
+      asBool(row.discount) ||
+      asBool(row.badge) ||
+      Boolean(
+        asNumber(row.list_price) &&
+          asNumber(row.price) &&
+          (asNumber(row.list_price) as number) >
+            (asNumber(row.price) as number) * 1.08,
+      ),
     collector_id: collectorId,
     run_id: runId,
   };

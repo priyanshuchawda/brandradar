@@ -124,6 +124,7 @@ ${JSON.stringify(input.hits.slice(0, 8))}`);
         name: String(row.name),
         url: typeof row.url === "string" && row.url ? row.url : input.pageUrl,
         price,
+        list_price: null,
         currency: typeof row.currency === "string" ? row.currency : "INR",
         availability,
         rating,
@@ -138,9 +139,9 @@ ${JSON.stringify(input.hits.slice(0, 8))}`);
 
 export async function polishPlays(plays: Play[]): Promise<Play[]> {
   if (!geminiConfigured() || plays.length === 0) return plays;
-  const parsed = await generateJson(`Rewrite these growth plays. Keep every number, SKU, and rival name unchanged.
-Return JSON: {"plays":[{"title":"","evidence":"","action":"","signal_type":""}]} with the same length and signal_type values.
-Titles: max 6 words. Evidence: cite the numbers. Action: one thing a founder can do this week.
+  const parsed = await generateJson(`Rewrite these growth plays. Keep every number, SKU, rival name, kind, and impact unchanged.
+Return JSON: {"plays":[{"title":"","evidence":"","action":"","why_it_grows":"","kind":"","impact":"","signal_type":""}]} with the same length.
+Titles: max 8 words. Evidence: cite the numbers. Action: one thing a founder can do this week. why_it_grows: one sentence on revenue, trust, or share.
 
 Input:
 ${JSON.stringify(plays)}`);
@@ -150,9 +151,10 @@ ${JSON.stringify(plays)}`);
       : null;
   if (!Array.isArray(next) || next.length === 0) return plays;
   return next.map((play, index) => ({
+    ...plays[index],
     title: play.title || plays[index].title,
     evidence: play.evidence || plays[index].evidence,
     action: play.action || plays[index].action,
-    signal_type: plays[index].signal_type,
+    why_it_grows: play.why_it_grows || plays[index].why_it_grows,
   }));
 }

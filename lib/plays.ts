@@ -45,6 +45,14 @@ export function computeHealth(items: Item[]): {
   };
 }
 
+function alreadyDiscounted(item: Item): boolean {
+  if (item.promo) return true;
+  if (item.list_price && item.price && item.list_price > item.price * 1.08) {
+    return true;
+  }
+  return false;
+}
+
 export function computeSignals(snapshot: Pick<Snapshot, "items">): Signal[] {
   const brandItems = snapshot.items.filter((item) => item.source === "brand");
   const rivalItems = snapshot.items.filter((item) => item.source === "rival");
@@ -61,45 +69,85 @@ export function computeSignals(snapshot: Pick<Snapshot, "items">): Signal[] {
     if (matches.length === 0) continue;
 
     const priced = matches.filter((item) => item.price !== null);
-    if (brand.price !== null && priced.length > 0) {
-      const best = priced.reduce((a, b) =>
-        (a.price ?? Infinity) <= (b.price ?? Infinity) ? a : b,
-      );
-      const gap = ((brand.price - (best.price ?? brand.price)) / brand.price) * 100;
+    const best =
+      priced.length > 0
+        ? priced.reduce((a, b) =>
+            (a.price ?? Infinity) <= (b.price ?? Infinity) ? a : b,
+          )
+        : null;
+    const rated = matches.filter((item) => item.rating !== null);
+    const bestRated =
+      rated.length > 0
+        ? rated.reduce((a, b) => ((a.rating ?? 0) >= (b.rating ?? 0) ? a : b))
+        : null;
+
+    const brandWinsPrice =
+      brand.price !== null && best?.price != null && brand.price <= best.price;
+    const brandWinsRating =
+      brand.rating !== null &&
+      bestRated?.rating != null &&
+      brand.rating >= bestRated.rating;
+
+    if (brandWinsPrice && brandWinsRating) {
+      signals.push({
+        type: "defend_win",
+        kind: "defend",
+        sku: brand.name,
+        brand_price: brand.price,
+        best_rival_price: best?.price,
+        brand_rating: brand.rating,
+        rival_rating: bestRated?.rating,
+        brand_reviews: brand.review_count,
+        rival_reviews: bestRated?.review_count,
+        score: 75 + Math.min(brand.review_count ?? 0, 400) / 40,
+        summary: `${brand.name} already beats ${best?.rival_name ?? "rivals"} on price (${money(brand.price, brand.currency)} vs ${money(best?.price, brand.currency)}) and rating (${brand.rating} vs ${bestRated?.rating}).`,
+      });
+    } else if (brand.price !== null && best?.price != null) {
+      const gap = ((brand.price - best.price) / brand.price) * 100;
       if (gap >= 8) {
         signals.push({
           type: "price_gap",
+          kind: "attack",
           sku: brand.name,
           brand_price: brand.price,
           best_rival_price: best.price,
           gap_pct: Number(gap.toFixed(1)),
+          score: gap + Math.min(brand.review_count ?? 0, 200) / 20,
           summary: `${brand.name} is ${gap.toFixed(0)}% above ${best.rival_name ?? "a rival"} (${money(best.price, brand.currency)} vs ${money(brand.price, brand.currency)}).`,
         });
       }
     }
 
-    const rated = matches.filter((item) => item.rating !== null);
-    if (brand.rating !== null && rated.length > 0) {
-      const bestRated = rated.reduce((a, b) =>
-        (a.rating ?? 0) >= (b.rating ?? 0) ? a : b,
-      );
-      const delta = (bestRated.rating ?? 0) - brand.rating;
-      if (delta >= 0.2) {
+    if (
+      brand.rating !== null &&
+      bestRated?.rating != null &&
+      !brandWinsRating
+    ) {
+      const delta = bestRated.rating - brand.rating;
+      const reviewLag =
+        (bestRated.review_count ?? 0) - (brand.review_count ?? 0);
+      if (delta >= 0.2 || reviewLag >= 80) {
         signals.push({
           type: "rating_gap",
+          kind: "attack",
           sku: brand.name,
           brand_rating: brand.rating,
           rival_rating: bestRated.rating,
-          summary: `${brand.name} sits at ${brand.rating} vs ${bestRated.rival_name ?? "rival"} at ${bestRated.rating}.`,
+          brand_reviews: brand.review_count,
+          rival_reviews: bestRated.review_count,
+          score: 45 + delta * 20 + Math.min(Math.max(reviewLag, 0), 400) / 40,
+          summary: `${brand.name} sits at ${brand.rating} (${brand.review_count ?? 0} reviews) vs ${bestRated.rival_name ?? "rival"} at ${bestRated.rating} (${bestRated.review_count ?? 0} reviews).`,
         });
       }
     }
 
-    if (!brand.promo && matches.some((item) => item.promo)) {
+    if (!alreadyDiscounted(brand) && matches.some((item) => item.promo)) {
       signals.push({
         type: "promo_gap",
+        kind: "attack",
         sku: brand.name,
-        summary: `Rivals are discounting ${brand.name}; the brand page is full price.`,
+        score: 28,
+        summary: `Rivals are discounting ${brand.name}; the brand page is full price with no visible list-price cut.`,
       });
     }
 
@@ -110,7 +158,9 @@ export function computeSignals(snapshot: Pick<Snapshot, "items">): Signal[] {
       const oos = matches.find((item) => item.availability === "out_of_stock");
       signals.push({
         type: "stock_window",
+        kind: "attack",
         sku: brand.name,
+        score: 92 + Math.min(brand.review_count ?? 0, 200) / 25,
         summary: `${oos?.rival_name ?? "A rival"} is out of stock on ${brand.name} while the brand can still sell.`,
       });
     }
@@ -126,62 +176,116 @@ export function computeSignals(snapshot: Pick<Snapshot, "items">): Signal[] {
       if (!already) {
         signals.push({
           type: "catalog_hole",
+          kind: "fill",
           sku: rival.name,
-          summary: `${rival.rival_name ?? "A rival"} sells ${rival.name} and the brand catalog has no overlap.`,
+          score: 40 + Math.min(rival.review_count ?? 0, 400) / 20,
+          summary: `${rival.rival_name ?? "A rival"} sells ${rival.name} (${money(rival.price, rival.currency)}, ${rival.review_count ?? 0} reviews) and the brand catalog has no overlap.`,
         });
       }
     }
   }
 
-  return signals.slice(0, 8);
+  return signals.sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 10);
+}
+
+function pickSignals(signals: Signal[]): Signal[] {
+  const picked: Signal[] = [];
+  const usedKind = new Set<string>();
+  const usedType = new Set<string>();
+  for (const signal of signals) {
+    if (picked.length >= 3) break;
+    const kind = signal.kind ?? "attack";
+    if (usedKind.has(kind) && usedType.has(signal.type)) continue;
+    if (usedKind.has(kind) && picked.length < 2) continue;
+    picked.push(signal);
+    usedKind.add(kind);
+    usedType.add(signal.type);
+  }
+  for (const signal of signals) {
+    if (picked.length >= 3) break;
+    if (picked.includes(signal)) continue;
+    picked.push(signal);
+  }
+  return picked.slice(0, 3);
 }
 
 export function playsFromSignals(signals: Signal[], currency: string): Play[] {
-  const plays: Play[] = [];
-  for (const signal of signals) {
-    if (plays.length >= 3) break;
-    if (signal.type === "price_gap") {
-      plays.push({
+  return pickSignals(signals).map((signal) => {
+    if (signal.type === "defend_win") {
+      return {
         signal_type: signal.type,
+        kind: "defend" as const,
+        impact: "share" as const,
+        title: `Double down on ${signal.sku}`,
+        evidence: signal.summary,
+        action: `Do not cut price. Put ${signal.sku} on the homepage, ads, and email this week — you already win on price and proof.`,
+        why_it_grows:
+          "Growth comes from pushing the SKU you already win, not copying a rival discount.",
+      };
+    }
+    if (signal.type === "price_gap") {
+      return {
+        signal_type: signal.type,
+        kind: "attack" as const,
+        impact: "margin" as const,
         title: `Close the gap on ${signal.sku}`,
         evidence: signal.summary,
-        action: `Match ${money(signal.best_rival_price, currency)} on the hero SKU, or bundle so the effective price lands there without a sitewide sale.`,
-      });
-    } else if (signal.type === "rating_gap") {
-      plays.push({
+        action: `Match ${money(signal.best_rival_price, currency)} on this SKU only, or bundle so the effective price lands there without a sitewide sale.`,
+        why_it_grows:
+          "Shoppers compare this SKU in-tab. A 8%+ gap on a hero item leaks conversion you already paid to acquire.",
+      };
+    }
+    if (signal.type === "rating_gap") {
+      return {
         signal_type: signal.type,
+        kind: "attack" as const,
+        impact: "trust" as const,
         title: `Fix public proof on ${signal.sku}`,
         evidence: signal.summary,
         action:
-          "Rewrite the PDP around the top public complaints and ask recent buyers for reviews this week — the gap is already visible on the listing.",
-      });
-    } else if (signal.type === "promo_gap") {
-      plays.push({
+          "Ask last-30-day buyers for a review, and rewrite the first PDP screen around the gap the rating already shows.",
+        why_it_grows:
+          "Rating and review volume are the public trust score. Price cuts will not fix a listing that looks unproven.",
+      };
+    }
+    if (signal.type === "promo_gap") {
+      return {
         signal_type: signal.type,
+        kind: "attack" as const,
+        impact: "revenue" as const,
         title: `Answer the promo on ${signal.sku}`,
         evidence: signal.summary,
         action:
           "Run a limited promo on the overlapping SKU only. Do not discount the whole catalog.",
-      });
-    } else if (signal.type === "catalog_hole") {
-      plays.push({
+        why_it_grows:
+          "A rival sale on the same SKU steals the comparison click this week. A sitewide sale trains customers to wait.",
+      };
+    }
+    if (signal.type === "catalog_hole") {
+      return {
         signal_type: signal.type,
+        kind: "fill" as const,
+        impact: "share" as const,
         title: `Fill the hole: ${signal.sku}`,
         evidence: signal.summary,
         action:
-          "Add a public listing in this shape, or merchandize the closest existing SKU into that slot.",
-      });
-    } else if (signal.type === "stock_window") {
-      plays.push({
-        signal_type: signal.type,
-        title: `Capture demand while rivals are dry`,
-        evidence: signal.summary,
-        action:
-          "Boost this SKU on the homepage and ads until rival stock returns.",
-      });
+          "List this shape publicly, or merchandize the closest existing SKU into that slot this week.",
+        why_it_grows:
+          "If rivals own a concern (retinol, kit, size) you do not list, you are invisible in that search — not just 'more expensive'.",
+      };
     }
-  }
-  return plays;
+    return {
+      signal_type: signal.type,
+      kind: "attack" as const,
+      impact: "revenue" as const,
+      title: `Capture demand while rivals are dry`,
+      evidence: signal.summary,
+      action:
+        "Boost this SKU on the homepage and paid this week. The window closes when rival stock returns.",
+      why_it_grows:
+        "Out-of-stock rivals send ready-to-buy traffic to whoever can still ship. That is the cheapest acquisition you will get.",
+    };
+  });
 }
 
 export function attachInsights(snapshot: Snapshot): Snapshot {

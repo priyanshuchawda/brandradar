@@ -56,9 +56,12 @@
   ],
   "plays": [
     {
-      "title": "Match the hero serum or bundle it",
-      "evidence": "Brand is 17% above Rival A on the overlapping 30ml Vitamin C serum while Rival A is already on promo.",
-      "action": "Price the 30ml at ₹749 or launch a serum + moisturizer bundle that lands at ₹899 effective.",
+      "title": "Close the gap on Vitamin C Serum 30ml",
+      "evidence": "Vitamin C Serum 30ml is 17% above Rival A (₹749 vs ₹899).",
+      "action": "Match ₹749 on this SKU only, or bundle so the effective price lands there without a sitewide sale.",
+      "why_it_grows": "Shoppers compare this SKU in-tab. A gap on a hero item leaks conversion you already paid to acquire.",
+      "kind": "attack",
+      "impact": "margin",
       "signal_type": "price_gap"
     }
   ],

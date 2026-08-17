@@ -7,6 +7,7 @@ function item(
 ): Item {
   return {
     currency: "INR",
+    list_price: null,
     collector_id: "c_mock_brandradar",
     run_id: "j_mock_preview",
     ...partial,
@@ -46,6 +47,16 @@ const catalogs: Record<
         review_count: 54,
         promo: false,
       },
+      {
+        name: "Ubtan Face Wash 150ml",
+        url: "/products/ubtan-face-wash",
+        price: 349,
+        list_price: 449,
+        availability: "in_stock",
+        rating: 4.85,
+        review_count: 531,
+        promo: true,
+      },
     ],
     rivals: [
       {
@@ -76,6 +87,15 @@ const catalogs: Record<
             availability: "in_stock",
             rating: 4.6,
             review_count: 301,
+            promo: false,
+          },
+          {
+            name: "Ubtan Face Wash 150ml",
+            url: "/products/ubtan",
+            price: 399,
+            availability: "in_stock",
+            rating: 4.4,
+            review_count: 90,
             promo: false,
           },
         ],

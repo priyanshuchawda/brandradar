@@ -16,6 +16,7 @@ export const ItemSchema = z.object({
   name: z.string(),
   url: z.string(),
   price: z.number().nullable(),
+  list_price: z.number().nullable().default(null),
   currency: z.string().default("INR"),
   availability: AvailabilitySchema.default("unknown"),
   rating: z.number().nullable(),
@@ -32,20 +33,28 @@ export const SignalSchema = z.object({
     "promo_gap",
     "catalog_hole",
     "stock_window",
+    "defend_win",
   ]),
   sku: z.string(),
   summary: z.string(),
+  kind: z.enum(["attack", "defend", "fill"]).optional(),
+  score: z.number().optional(),
   brand_price: z.number().nullable().optional(),
   best_rival_price: z.number().nullable().optional(),
   gap_pct: z.number().nullable().optional(),
   brand_rating: z.number().nullable().optional(),
   rival_rating: z.number().nullable().optional(),
+  brand_reviews: z.number().nullable().optional(),
+  rival_reviews: z.number().nullable().optional(),
 });
 
 export const PlaySchema = z.object({
   title: z.string(),
   evidence: z.string(),
   action: z.string(),
+  why_it_grows: z.string(),
+  kind: z.enum(["attack", "defend", "fill"]),
+  impact: z.enum(["revenue", "trust", "share", "margin"]),
   signal_type: SignalSchema.shape.type,
 });
 

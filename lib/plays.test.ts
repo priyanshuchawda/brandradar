@@ -24,6 +24,7 @@ function snapshot(over: Partial<Snapshot> = {}): Snapshot {
         promo: false,
         collector_id: "c_test",
         run_id: null,
+        list_price: null,
       },
       {
         source: "rival",
@@ -38,6 +39,7 @@ function snapshot(over: Partial<Snapshot> = {}): Snapshot {
         promo: true,
         collector_id: "c_test",
         run_id: null,
+        list_price: 899,
       },
     ],
     signals: [],
@@ -77,6 +79,50 @@ describe("attachInsights", () => {
     expect(next.plays.length).toBeGreaterThan(0);
     expect(next.plays.length).toBeLessThanOrEqual(3);
     expect(next.plays[0]?.signal_type).toBeTruthy();
+    expect(next.plays[0]?.kind).toBeTruthy();
+    expect(next.plays[0]?.why_it_grows.length).toBeGreaterThan(10);
+  });
+
+  it("defends a SKU the brand already wins on price and rating", () => {
+    const next = attachInsights(
+      snapshot({
+        items: [
+          {
+            source: "brand",
+            name: "Ubtan Face Wash 150ml",
+            url: "https://mamaearth.in/products/ubtan",
+            price: 349,
+            list_price: 449,
+            currency: "INR",
+            availability: "in_stock",
+            rating: 4.85,
+            review_count: 531,
+            promo: true,
+            collector_id: "c_test",
+            run_id: null,
+          },
+          {
+            source: "rival",
+            rival_name: "Plum",
+            name: "Ubtan Face Wash 150ml",
+            url: "https://plumgoodness.com/products/ubtan",
+            price: 399,
+            list_price: null,
+            currency: "INR",
+            availability: "in_stock",
+            rating: 4.4,
+            review_count: 90,
+            promo: false,
+            collector_id: "c_test",
+            run_id: null,
+          },
+        ],
+      }),
+    );
+    expect(next.plays.some((play) => play.kind === "defend")).toBe(true);
+    expect(next.plays.some((play) => /do not cut price/i.test(play.action))).toBe(
+      true,
+    );
   });
 });
 
