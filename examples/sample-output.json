@@ -48,21 +48,26 @@
     {
       "type": "price_gap",
       "sku": "Vitamin C Serum 30ml",
+      "summary": "Vitamin C Serum 30ml is 17% above Rival A (₹749 vs ₹899).",
       "brand_price": 899,
       "best_rival_price": 749,
-      "gap_pct": 20.0
+      "gap_pct": 16.7
     }
   ],
   "plays": [
     {
       "title": "Match the hero serum or bundle it",
-      "evidence": "Brand is 20% above Rival A on the overlapping 30ml Vitamin C serum while Rival A is already on promo.",
-      "action": "Price the 30ml at ₹749 or launch a serum + moisturizer bundle that lands at ₹899 effective."
+      "evidence": "Brand is 17% above Rival A on the overlapping 30ml Vitamin C serum while Rival A is already on promo.",
+      "action": "Price the 30ml at ₹749 or launch a serum + moisturizer bundle that lands at ₹899 effective.",
+      "signal_type": "price_gap"
     }
   ],
   "health": {
     "null_rate": 0,
     "last_heal": null,
-    "collector_ids": ["c_replace_me"]
-  }
+    "collector_ids": ["c_replace_me"],
+    "broken_fields": []
+  },
+  "mode": "live",
+  "notes": ["Example structured output for judges. Live scans use the same Snapshot schema."]
 }

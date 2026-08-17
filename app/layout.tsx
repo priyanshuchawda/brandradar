@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -16,6 +16,12 @@ export const metadata: Metadata = {
   title: "BrandRadar",
   description:
     "Competitive intelligence that tells a brand what to do next. Self-healing scrapers. Growth plays.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#07080c",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

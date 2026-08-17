@@ -45,6 +45,14 @@ npm install
 npm run dev
 ```
 
+Open [http://localhost:3000](http://localhost:3000). **Load demo snapshot** is instant (fixture). **Scan arena** hits Studio when collector ids are set (`USE_MOCK=false`) and can take 30–90s.
+
+```bash
+npm test
+npm run test:coverage   # unit coverage of plays / mapping / heal (~90% of those files)
+npm run lint
+```
+
 Open [http://localhost:3000](http://localhost:3000). With Bright Data + Gemini keys, Discover + Flash-Lite return a **live** catalog. Custom Scraper Studio collectors (`c_*` in `.env.local`) are the scored path: create with `scripts/studio-create.sh`, then set `USE_MOCK=false`. Heal/approve from the dashboard or `scripts/studio.sh`.
 
 GitHub (scripts only — do not `git push` / `gh pr` / `gh issue` by hand):

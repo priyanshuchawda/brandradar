@@ -12,6 +12,7 @@ export function isStudioCollectorId(id: string): boolean {
 export function resolveStudioCollector(snapshot: Snapshot): string | undefined {
   const fromSnap = snapshot.health.collector_ids.find(isStudioCollectorId);
   if (fromSnap) return fromSnap;
+  if (snapshot.mode === "mock") return undefined;
   return (
     collectorIdFor(snapshot.brand.domain, "pdp") ||
     collectorIdFor(snapshot.brand.domain, "discovery")
