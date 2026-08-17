@@ -1,0 +1,68 @@
+{
+  "brand": {
+    "name": "Example D2C",
+    "domain": "ecommerce",
+    "url": "https://example-brand.com",
+    "snapshot_at": "2026-08-17T18:00:00Z"
+  },
+  "rivals": [
+    {
+      "name": "Rival A",
+      "url": "https://rival-a.example"
+    },
+    {
+      "name": "Rival B",
+      "url": "https://rival-b.example"
+    }
+  ],
+  "items": [
+    {
+      "source": "brand",
+      "name": "Vitamin C Serum 30ml",
+      "url": "https://example-brand.com/products/vit-c-serum",
+      "price": 899,
+      "currency": "INR",
+      "availability": "in_stock",
+      "rating": 4.2,
+      "review_count": 128,
+      "promo": false,
+      "collector_id": "c_replace_me",
+      "run_id": "j_replace_me"
+    },
+    {
+      "source": "rival",
+      "rival_name": "Rival A",
+      "name": "Vitamin C Serum 30ml",
+      "url": "https://rival-a.example/products/vit-c-serum",
+      "price": 749,
+      "currency": "INR",
+      "availability": "in_stock",
+      "rating": 4.5,
+      "review_count": 410,
+      "promo": true,
+      "collector_id": "c_replace_me",
+      "run_id": "j_replace_me"
+    }
+  ],
+  "signals": [
+    {
+      "type": "price_gap",
+      "sku": "Vitamin C Serum 30ml",
+      "brand_price": 899,
+      "best_rival_price": 749,
+      "gap_pct": 20.0
+    }
+  ],
+  "plays": [
+    {
+      "title": "Match the hero serum or bundle it",
+      "evidence": "Brand is 20% above Rival A on the overlapping 30ml Vitamin C serum while Rival A is already on promo.",
+      "action": "Price the 30ml at ₹749 or launch a serum + moisturizer bundle that lands at ₹899 effective."
+    }
+  ],
+  "health": {
+    "null_rate": 0,
+    "last_heal": null,
+    "collector_ids": ["c_replace_me"]
+  }
+}
