@@ -79,6 +79,7 @@ Do not commit `.env.local`.
 | [docs/architecture.md](docs/architecture.md) | App + collectors + self-heal loop |
 | [docs/hackathon.md](docs/hackathon.md) | Extracted hackathon brief, rules, prizes, judging |
 | [docs/scraper-studio.md](docs/scraper-studio.md) | How Scraper Studio is used (judges) |
+| [examples/studio-pdp-row.json](examples/studio-pdp-row.json) | Real Studio PDP extraction (Mamaearth vitamin C) |
 | [prompts/cursor.md](prompts/cursor.md) | Copy-paste prompts for Cursor / Claude Code / Codex |
 | [scripts/](scripts/) | `push.sh` / `pr.sh` / `issue.sh` / `studio.sh` / `studio-create.sh` |
 

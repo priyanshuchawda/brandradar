@@ -19,7 +19,13 @@ Create with `scripts/studio-create.sh`. IDs go in `.env.local`, never in git.
 | `COLLECTOR_ECOMMERCE_PDP` | PDP | Mamaearth vitamin C serum PDP |
 | `COLLECTOR_ECOMMERCE_DISCOVERY` | Discovery | `https://mamaearth.in/shop` |
 
-Library scrapers (Amazon, LinkedIn, …) are **not** the submission scraper.
+## Verified on Mamaearth (17 Aug 2026)
+
+- **PDP collector** (`scripts/studio.sh run` on the vitamin C 30ml page): sale **₹349**, list **₹499**, rating **4.88**, 182 reviews. Sample row: [examples/studio-pdp-row.json](../examples/studio-pdp-row.json).
+- **Discovery collector** (`https://mamaearth.in/shop`): product URLs, ratings, review counts. Listing `price` sometimes concatenates sale+list (e.g. `349499`). The app uses Discovery for URLs and **PDP for prices**, so the mashup does not reach the plays.
+- A follow-up `heal` on Discovery hit **409** (another Studio refactor still in progress from create). Re-run heal after that job finishes. Collector id does not change.
+
+Collection API in `lib/brightdata.ts` matches the official [Node starter](https://github.com/brightdata/bright-data-scraper-studio-nodejs-project): `POST /dca/trigger` → poll `GET /dca/dataset`.
 
 ## Self-heal
 

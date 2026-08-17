@@ -43,6 +43,20 @@ function collapseRepeatedName(name: string): string {
   return trimmed;
 }
 
+function discoverySeedUrl(url: string): string {
+  try {
+    const parsed = new URL(ensureUrl(url));
+    const host = parsed.hostname.replace(/^www\./, "");
+    if (host === "mamaearth.in" && (parsed.pathname === "/" || parsed.pathname === "")) {
+      parsed.pathname = "/shop";
+      return parsed.toString();
+    }
+  } catch {
+    // keep the original url
+  }
+  return url;
+}
+
 function asBool(value: unknown): boolean {
   if (typeof value === "boolean") return value;
   if (typeof value === "string") {
@@ -114,7 +128,10 @@ async function scrapeLive(request: ScanRequest): Promise<Snapshot> {
     throw new Error("Collector IDs are not configured for this domain");
   }
 
-  const listingUrls = [brandUrl, ...rivalUrls];
+  const listingUrls = [
+    discoverySeedUrl(brandUrl),
+    ...rivalUrls.map(discoverySeedUrl),
+  ];
   const discovered = await triggerWithUrls(discoveryId, listingUrls);
   const listingRows = discovered.filter(
     (row): row is Record<string, unknown> =>
@@ -131,7 +148,7 @@ async function scrapeLive(request: ScanRequest): Promise<Snapshot> {
     )
     .filter((url): url is string => Boolean(url) && !url.endsWith("/shop"))
     .filter((url, index, all) => all.indexOf(url) === index)
-    .slice(0, 12);
+    .slice(0, 8);
 
   const details =
     pdpUrls.length > 0 ? await triggerWithUrls(pdpId, pdpUrls) : discovered;

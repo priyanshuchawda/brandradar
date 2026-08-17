@@ -72,6 +72,7 @@ async function apiRequest(
         headers: {
           Authorization: `Bearer ${apiToken}`,
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
         body: body === undefined ? undefined : JSON.stringify(body),
       });

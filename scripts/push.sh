@@ -11,8 +11,8 @@ if [[ $# -lt 1 ]]; then
   exit 1
 fi
 
-if git status --porcelain | grep -E '(^..|\s)\.env\.local$' >/dev/null; then
-  echo "refusing: .env.local must stay untracked" >&2
+if git ls-files --error-unmatch .env.local >/dev/null 2>&1; then
+  echo "refusing: .env.local is tracked" >&2
   exit 1
 fi
 
