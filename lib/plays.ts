@@ -1,4 +1,5 @@
 import type { Domain, Item, Play, Signal, Snapshot } from "./schema";
+import { auditItems, healHint } from "./qa";
 
 function normalizeName(value: string): string {
   return value
@@ -293,6 +294,8 @@ export function attachInsights(snapshot: Snapshot): Snapshot {
   const signals = computeSignals(snapshot);
   const plays = playsFromSignals(signals, currency);
   const health = computeHealth(snapshot.items);
+  const qa = auditItems(snapshot.items, snapshot.brand.domain);
+  const qaFields = [...new Set(qa.map((issue) => issue.field))];
   return {
     ...snapshot,
     signals,
@@ -300,7 +303,9 @@ export function attachInsights(snapshot: Snapshot): Snapshot {
     health: {
       ...snapshot.health,
       null_rate: health.null_rate,
-      broken_fields: health.broken_fields,
+      broken_fields: [...new Set([...health.broken_fields, ...qaFields])],
+      qa_flags: qa.map((issue) => `${issue.sku}: ${issue.symptom}`),
+      heal_hint: healHint(qa) ?? snapshot.health.heal_hint ?? null,
     },
   };
 }

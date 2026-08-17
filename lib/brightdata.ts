@@ -1,4 +1,5 @@
 import type { Domain } from "./schema";
+import { brightDataClient } from "./bd";
 
 const API_BASE = "https://api.brightdata.com";
 const POLL_INTERVAL_MS = 5_000;
@@ -113,7 +114,49 @@ function isReady(payload: unknown): payload is unknown[] {
   return Array.isArray(payload) && payload.length > 0;
 }
 
+export function flattenStudioResults(
+  results: Array<{ data: unknown[] | null; error: string | null }>,
+): unknown[] {
+  const rows: unknown[] = [];
+  const errors: string[] = [];
+  for (const result of results) {
+    if (result.error) errors.push(result.error);
+    if (Array.isArray(result.data)) {
+      for (const row of result.data) rows.push(row);
+    }
+  }
+  if (rows.length === 0 && errors.length > 0) {
+    throw new Error(errors[0]);
+  }
+  return rows;
+}
+
+async function runScraperViaSdk(
+  collectorId: string,
+  inputs: ScraperInput[],
+): Promise<unknown[]> {
+  const results = await brightDataClient().scraperStudio.run(collectorId, {
+    input: inputs,
+    timeout: 180_000,
+    pollInterval: 5_000,
+  });
+  return flattenStudioResults(results);
+}
+
 export async function runScraper(
+  collectorId: string,
+  inputs: ScraperInput[],
+): Promise<unknown[]> {
+  try {
+    return await runScraperViaSdk(collectorId, inputs);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/not set|Unauthorized|401/i.test(message)) throw error;
+    return runScraperViaRest(collectorId, inputs);
+  }
+}
+
+async function runScraperViaRest(
   collectorId: string,
   inputs: ScraperInput[],
 ): Promise<unknown[]> {

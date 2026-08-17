@@ -18,6 +18,8 @@ const base: Snapshot = {
     last_heal: null,
     collector_ids: ["c_mock_brandradar"],
     broken_fields: [],
+    qa_flags: [],
+    heal_hint: null,
   },
   mode: "mock",
   notes: [],

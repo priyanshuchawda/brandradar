@@ -84,7 +84,10 @@ export async function POST(request: Request) {
   }
 
   if (parsed.data.action === "heal") {
-    const prompt = parsed.data.prompt || DEFAULT_HEAL_PROMPT;
+    const prompt =
+      parsed.data.prompt ||
+      parsed.data.snapshot.health.heal_hint ||
+      DEFAULT_HEAL_PROMPT;
     let studioNote: string | undefined;
     let preview: unknown = healSnapshot(parsed.data.snapshot).items[0] ?? null;
 

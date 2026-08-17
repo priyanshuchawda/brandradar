@@ -10,6 +10,7 @@ type Status = {
   discover: boolean;
   gemini: boolean;
   geminiModel?: string;
+  geminiFlashModel?: string;
   live: Record<Domain, boolean>;
   demoFixture?: boolean;
 };
@@ -106,7 +107,11 @@ export function ScanApp() {
       const response = await fetch("/api/heal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, snapshot }),
+        body: JSON.stringify({
+          action,
+          snapshot,
+          prompt: snapshot.health.heal_hint || undefined,
+        }),
       });
       const payload = await response.json();
       if (!response.ok) throw apiError(payload, "Heal failed", response.status);
@@ -257,7 +262,14 @@ function StatusStrip({
   return (
     <div className="flex flex-wrap gap-2 font-mono text-[11px] sm:justify-end">
       <Pill ok={status.discover} label="discover" />
-      <Pill ok={status.gemini} label={status.geminiModel?.replace("gemini-", "") ?? "gemini"} />
+      <Pill
+        ok={status.gemini}
+        label={
+          status.geminiFlashModel
+            ? `${(status.geminiModel ?? "flash-lite").replace("gemini-", "")} + ${(status.geminiFlashModel ?? "flash").replace("gemini-", "")}`
+            : (status.geminiModel?.replace("gemini-", "") ?? "gemini")
+        }
+      />
       <Pill ok={status.live[domain]} label={status.live[domain] ? "studio" : "no studio"} />
     </div>
   );
@@ -285,8 +297,9 @@ function EmptyState() {
         <h2 className="mt-2 text-xl font-semibold">Scan a public brand</h2>
         <p className="mt-2 text-sm text-muted">
           Custom Scraper Studio collectors pull catalog rows. Discover finds
-          rivals. Gemini Flash-Lite only rewrites play copy. Numbers stay on the
-          extracted rows.
+          rivals. Gemini Flash handles URL context, structured extract, and heal
+          prompts. Flash-Lite rewrites play copy. Numbers stay on the extracted
+          rows.
         </p>
       </div>
     </div>
@@ -388,6 +401,9 @@ function Dashboard({
               {snapshot.health.collector_ids.join(" · ")}
               {snapshot.health.last_heal ? ` · healed ${snapshot.health.last_heal}` : ""}
             </p>
+            {snapshot.health.heal_hint ? (
+              <p className="mt-1 text-xs text-warn">{snapshot.health.heal_hint}</p>
+            ) : null}
           </div>
           <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
             <button
@@ -416,6 +432,13 @@ function Dashboard({
             </button>
           </div>
         </div>
+        {snapshot.health.qa_flags.length > 0 ? (
+          <ul className="mt-3 grid gap-1 text-xs text-warn">
+            {snapshot.health.qa_flags.map((flag) => (
+              <li key={flag}>{flag}</li>
+            ))}
+          </ul>
+        ) : null}
         {snapshot.notes.length > 0 ? (
           <ul className="mt-3 grid gap-1 text-xs text-muted">
             {snapshot.notes.map((note) => (

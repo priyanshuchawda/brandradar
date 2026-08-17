@@ -49,6 +49,8 @@ function snapshot(over: Partial<Snapshot> = {}): Snapshot {
       last_heal: null,
       collector_ids: ["c_test"],
       broken_fields: [],
+      qa_flags: [],
+      heal_hint: null,
     },
     mode: "mock",
     notes: [],

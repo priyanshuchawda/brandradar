@@ -79,6 +79,8 @@ export const SnapshotSchema = z.object({
     last_heal: z.string().nullable(),
     collector_ids: z.array(z.string()),
     broken_fields: z.array(z.string()).default([]),
+    qa_flags: z.array(z.string()).default([]),
+    heal_hint: z.string().nullable().default(null),
   }),
   mode: z.enum(["mock", "live"]),
   notes: z.array(z.string()).default([]),

@@ -18,6 +18,7 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   agentRules: false,
   poweredByHeader: false,
+  serverExternalPackages: ["@brightdata/sdk"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

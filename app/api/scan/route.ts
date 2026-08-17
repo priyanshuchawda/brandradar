@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { liveCollectorsReady } from "@/lib/brightdata";
 import { discoverEnabled } from "@/lib/discover";
-import { geminiConfigured, geminiModel } from "@/lib/gemini";
+import { geminiConfigured, geminiFlashModel, geminiLiteModel } from "@/lib/gemini";
 import {
   SCAN_BODY_LIMIT,
   authorize,
@@ -69,7 +69,8 @@ export async function GET(request: Request) {
       brightDataToken: Boolean(process.env.BRIGHT_DATA_API_TOKEN?.trim()),
       discover: discoverEnabled(),
       gemini: geminiConfigured(),
-      geminiModel: geminiModel(),
+      geminiModel: geminiLiteModel(),
+      geminiFlashModel: geminiFlashModel(),
       live: {
         ecommerce: liveCollectorsReady("ecommerce"),
         edtech: liveCollectorsReady("edtech"),

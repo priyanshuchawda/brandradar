@@ -14,13 +14,13 @@ See the market. Heal the scraper. Grow the brand.
 4. **Recommend** three plays: **attack** a leak, **defend** a win, or **fill** a hole — with why it grows the brand.
 5. **Repair** extractors when a field comes back null — same collector id, preview, then approve.
 
-Numbers come from extracted rows. Language models only rewrite play copy. They do not invent prices.
+Numbers come from extracted rows. Gemini Flash may structure a fallback catalog and write heal prompts. Flash-Lite only rewrites play copy. Neither invents prices.
 
 ## Stack
 
-Next.js App Router, TypeScript, Tailwind, Zod. Bright Data Collection API and Discover run **only on the server**. Gemini 3.1 Flash-Lite is optional.
+Next.js App Router, TypeScript, Tailwind, Zod. Bright Data Collection API and Discover run **only on the server**. Gemini Flash and Flash-Lite are optional.
 
-Details: [docs/stack.md](docs/stack.md) · [docs/architecture.md](docs/architecture.md) · [docs/security.md](docs/security.md)
+Details: [docs/stack.md](docs/stack.md) · [docs/architecture.md](docs/architecture.md) · [docs/security.md](docs/security.md) · [docs/integrations.md](docs/integrations.md)
 
 ## Run locally
 
@@ -49,10 +49,12 @@ Put secrets in `.env.local`. Never commit them.
 
 | Variable | Purpose |
 | --- | --- |
-| `BRIGHT_DATA_API_TOKEN` | Discover + Collection API |
+| `BRIGHT_DATA_API_TOKEN` | Same account token as Scraper Studio / `@brightdata/sdk` |
 | `COLLECTOR_*_DISCOVERY` / `COLLECTOR_*_PDP` | Scraper Studio collector ids (`c_*`) |
 | `USE_MOCK=false` | Prefer Studio collectors when ids exist |
-| `GEMINI_API_KEY` | Optional play-copy rewrite |
+| `GEMINI_API_KEY` | Optional. Flash + Flash-Lite |
+| `GEMINI_MODEL` | Flash-Lite id (rival pick, play copy) |
+| `GEMINI_MODEL_FLASH` | Flash id (URL context, extract, heal) |
 | `BRANDRADAR_API_KEY` | Optional bearer/API key on mutating routes |
 | `ALLOW_DEMO_FIXTURE` | `true`/`false`. Unset = allowed outside production |
 
@@ -75,6 +77,7 @@ Scan body: `{ brandUrl, brandName?, domain, rivalUrls?, forceMock? }`. `domain` 
 | [docs/product.md](docs/product.md) | Problem, users, plays |
 | [docs/architecture.md](docs/architecture.md) | Pipeline and components |
 | [docs/collectors.md](docs/collectors.md) | Scraper Studio collectors and self-heal |
+| [docs/integrations.md](docs/integrations.md) | Bright Data SDK + Gemini: what we use and skip |
 | [docs/security.md](docs/security.md) | Auth, rate limits, URL policy, headers |
 | [docs/stack.md](docs/stack.md) | Language and vendor choices |
 | [examples/](examples/) | Canonical snapshot + a live PDP row |

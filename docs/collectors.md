@@ -2,7 +2,7 @@
 
 BrandRadar does not use Bright Data library scrapers as the product extractor. Listing and product-detail collectors are custom Scraper Studio templates (`c_*`).
 
-Discover (`POST /discover/sync`) only finds rival **homepages** and listing snippets. Gemini Flash-Lite may structure those snippets when Studio ids are missing. It does not replace the collector.
+Discover (`POST /discover/sync`) only finds rival **homepages** and listing snippets. Gemini Flash may structure those pages (URL context) when Studio ids are missing. It does not replace the collector.
 
 ## Pipeline
 
@@ -43,4 +43,4 @@ Collector id does not change. The health panel calls the same `scripts/studio.sh
 
 ## Models and codegen
 
-Studio's AI Flow generates collector JavaScript; review it in the Studio UI before relying on it in production. Gemini 3.1 Flash-Lite is used only for rival picking from Discover hits, snippet rows when Studio is down, and play wording.
+Studio's AI Flow generates collector JavaScript; review it in the Studio UI before relying on it in production. Gemini Flash is used for fallback extract (URL context) and heal prompts. Flash-Lite is used for rival picking from Discover hits and play wording.

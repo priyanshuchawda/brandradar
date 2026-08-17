@@ -23,7 +23,8 @@ Public brand URL + domain
 | `app/api/scan` | Status + scan. Validates URLs, rate-limits, runs the pipeline |
 | `app/api/heal` | Break / heal / approve. Mock locally; Studio CLI when a real `c_*` is present |
 | `lib/scan.ts` | Studio first (if ready), else Discover + Gemini extract, else fixture |
-| `lib/brightdata.ts` | `POST /dca/trigger` then poll `GET /dca/dataset` |
+| `lib/bd.ts` | Official `@brightdata/sdk` client (same account token as Studio) |
+| `lib/brightdata.ts` | `scraperStudio.run` first; REST `/dca/trigger` + `/dca/dataset` fallback |
 | `lib/discover.ts` | Fast Discover, 5 hits, no page body, 6 hour cache |
 | `lib/plays.ts` | Signals and plays. Deterministic |
 | `lib/map-item.ts` | Studio row → `Item` |
@@ -38,7 +39,7 @@ Tokens never leave the server. The browser only talks to `/api/*`.
 3. Take up to **eight** product URLs.
 4. PDP collector for prices and ratings (listing mashups are not trusted).
 5. `attachInsights` → at most three plays.
-6. Optional Flash-Lite rewrite of play text.
+6. Optional Flash-Lite rewrite of play text. Flash may rewrite the heal prompt when QA flags a mashed price.
 
 If Studio is not configured or fails, Discover snippets + Gemini extraction run next. If that fails, a labeled fixture is returned (development only unless `ALLOW_DEMO_FIXTURE=true`).
 

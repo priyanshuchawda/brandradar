@@ -5,6 +5,7 @@ import {
   geminiConfigured,
   pickBrandRivals,
   polishPlays,
+  proposeHealPrompt,
 } from "./gemini";
 import { buildMockSnapshot } from "./mock";
 import { attachInsights, ensureUrl, hostnameLabel } from "./plays";
@@ -88,6 +89,8 @@ async function scrapeLive(request: ScanRequest): Promise<Snapshot> {
       last_heal: null,
       collector_ids: [discoveryId, pdpId],
       broken_fields: [],
+      qa_flags: [],
+      heal_hint: null,
     },
     mode: "live",
     notes: [
@@ -95,7 +98,7 @@ async function scrapeLive(request: ScanRequest): Promise<Snapshot> {
     ],
   };
 
-  return attachInsights(snapshot);
+  return withFlashHeal(attachInsights(snapshot));
 }
 
 function listingQuery(name: string, domain: Domain, host?: string): { query: string; intent: string } {
@@ -155,7 +158,7 @@ async function scrapeViaDiscover(request: ScanRequest, rivalUrls: string[]): Pro
   items.push(
     ...(await extractCatalog({
       source: "brand",
-      pageUrl: brandUrl,
+      pageUrl: discoverySeedUrl(brandUrl),
       domain: request.domain,
       hits: brandHits,
     })),
@@ -175,7 +178,7 @@ async function scrapeViaDiscover(request: ScanRequest, rivalUrls: string[]): Pro
       ...(await extractCatalog({
         source: "rival",
         rivalName: rival.name,
-        pageUrl: rival.url,
+        pageUrl: discoverySeedUrl(rival.url),
         domain: request.domain,
         hits,
       })),
@@ -183,7 +186,7 @@ async function scrapeViaDiscover(request: ScanRequest, rivalUrls: string[]): Pro
   }
 
   if (items.length === 0) {
-    throw new Error("Gemini extracted no catalog rows from Discover snippets");
+    throw new Error("Gemini Flash extracted no catalog rows from Discover + URL context");
   }
 
   const snapshot: Snapshot = {
@@ -202,14 +205,37 @@ async function scrapeViaDiscover(request: ScanRequest, rivalUrls: string[]): Pro
       last_heal: null,
       collector_ids: ["discover_sync"],
       broken_fields: [],
+      qa_flags: [],
+      heal_hint: null,
     },
     mode: "live",
     notes: [
       ...notes,
-      "Live path: Bright Data Discover (snippets only) + Gemini 3.1 Flash-Lite extraction. No page bodies downloaded.",
+      "Live path: Bright Data Discover + Gemini Flash (URL context + structured JSON) when Studio is down. Flash-Lite only rewrites play copy.",
     ],
   };
-  return attachInsights(snapshot);
+  return withFlashHeal(attachInsights(snapshot));
+}
+
+async function withFlashHeal(snapshot: Snapshot): Promise<Snapshot> {
+  if (!geminiConfigured() || snapshot.health.qa_flags.length === 0) {
+    return snapshot;
+  }
+  try {
+    const hint = await proposeHealPrompt(
+      snapshot.health.qa_flags,
+      snapshot.health.heal_hint,
+    );
+    if (hint && hint !== snapshot.health.heal_hint) {
+      snapshot.health.heal_hint = hint;
+      snapshot.notes.push("Gemini Flash wrote the Studio heal prompt from QA flags.");
+    }
+  } catch (error) {
+    snapshot.notes.push(
+      `Gemini Flash heal prompt skipped: ${error instanceof Error ? error.message : "unknown"}`,
+    );
+  }
+  return snapshot;
 }
 
 export async function runScan(request: ScanRequest): Promise<Snapshot> {
