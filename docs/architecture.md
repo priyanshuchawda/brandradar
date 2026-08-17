@@ -8,10 +8,9 @@ Planning is allowed before/during kickoff. Implementation starts this week.
         ▼
 ┌───────────────────┐     Bright Data Scraper Studio
 │  BrandRadar app   │     custom collectors (c_*)
-│  Next.js (likely) │◄──── Discovery / Search / PDP
-│                   │     + self-heal on null fields
-│  Arena dashboard  │
-│  Growth plays     │
+│  Next.js + TS     │◄──── Discovery / Search / PDP
+│  (full stack)     │     + self-heal on null fields
+│  Arena + plays    │
 └─────────┬─────────┘
           │ structured JSON
           ▼
@@ -66,19 +65,24 @@ In the product: a **Scraper health** panel — last run, null-rate, Heal button,
 
 ## App sketch (week-sized)
 
-- **Web app** (Next.js or similar) so Suit-Up is in play.
+- **Web app:** Next.js App Router, TypeScript only. See [stack.md](stack.md).
 - Screens: onboarding (URL + domain) → arena (comparison) → plays → health.
-- Backend: thin API that triggers collectors (`POST /dca/trigger` + poll `/dca/dataset`) and stores snapshots as JSON files or SQLite.
-- No Bright Data secrets in the client. Token stays on the server.
+- Server routes call Collection API (`POST /dca/trigger` + poll `/dca/dataset`). Port of the [official Node starter](https://github.com/brightdata/bright-data-scraper-studio-nodejs-project).
+- Snapshots as JSON under `data/`. Token stays on the server.
 
-## Stack suggestion
+## Stack (locked)
 
-| Layer | Default | Why |
-| --- | --- | --- |
-| UI | Next.js + Tailwind | Fast, demo-friendly |
-| API | Next route handlers or a small Python FastAPI | Team skill split |
-| Collect | Bright Data CLI to *create/heal*; Collection API to *run* from the app | CLI for agents, API for product |
-| Insights | Deterministic rules first, LLM rewrite of the 3 plays second | Judges can trust the numbers |
+Full TypeScript. Bright Data’s Python starter is the same HTTP calls; we are not using it. CLI + self-heal demo + Best UI all point at one Node/TS app.
+
+| Layer | Choice |
+| --- | --- |
+| App | Next.js (App Router) + TypeScript |
+| UI | Tailwind + shadcn/ui |
+| Run collectors | Collection API in `lib/brightdata.ts` (server-only) |
+| Create / heal | `npx @brightdata/cli` (`bdata scraper create \| heal \| approve`) |
+| Schema | Zod (`BrandSnapshot`) |
+| Store | JSON files (`data/`) |
+| Insights | Deterministic rules, optional LLM copy rewrite |
 
 ## Week plan
 

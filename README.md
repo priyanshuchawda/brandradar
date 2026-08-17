@@ -5,6 +5,8 @@
 BrandRadar is our project for [Into the Scrape-Verse](https://www.wemakedevs.org/hackathons/scrape-verse) (WeMakeDevs × Bright Data, 17–23 Aug 2026). A brand drops in its public site. We discover rivals in the same domain, collect public catalog / price / rating / promo data with **custom Bright Data Scraper Studio collectors**, and turn gaps into growth plays. When a competitor redesigns their site, the collector **self-heals** and the dashboard keeps moving.
 
 > Any brand, any domain. Prototype ships with **ecommerce**, **edtech**, and **food**. Fintech stays a stretch domain (too much is login-walled).
+>
+> **Stack (locked):** full TypeScript — Next.js App Router, Tailwind, server-side Bright Data Collection API. No Python in the product. Details in [docs/stack.md](docs/stack.md).
 
 ## Problem
 
@@ -35,6 +37,7 @@ Growing brands lose share to competitors they cannot see in real time. Prices, S
 | Path | What it is |
 | --- | --- |
 | [docs/problem-and-idea.md](docs/problem-and-idea.md) | Problem statement, product, why this wins |
+| [docs/stack.md](docs/stack.md) | Why full TypeScript, not Python |
 | [docs/architecture.md](docs/architecture.md) | App + collectors + self-heal loop |
 | [docs/hackathon.md](docs/hackathon.md) | Extracted hackathon brief, rules, prizes, judging |
 | [docs/brightdata.md](docs/brightdata.md) | How to use Scraper Studio, CLI, API, self-heal |
