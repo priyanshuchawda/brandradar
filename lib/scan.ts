@@ -1,9 +1,14 @@
-import { collectorIdFor, liveCollectorsReady, triggerWithUrls } from "./brightdata";
-import { discoverEnabled, discoverRivals } from "./discover";
-import { polishPlays } from "./gemini";
+import { collectorIdFor, hasBrightDataToken, liveCollectorsReady, triggerWithUrls } from "./brightdata";
+import { discoverEnabled, discoverListings, discoverRivals } from "./discover";
+import {
+  extractCatalog,
+  geminiConfigured,
+  pickBrandRivals,
+  polishPlays,
+} from "./gemini";
 import { buildMockSnapshot } from "./mock";
 import { attachInsights, ensureUrl, hostnameLabel } from "./plays";
-import type { Item, ScanRequest, Snapshot } from "./schema";
+import type { Domain, Item, ScanRequest, Snapshot } from "./schema";
 
 function asNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -137,10 +142,150 @@ async function scrapeLive(request: ScanRequest): Promise<Snapshot> {
   return attachInsights(snapshot);
 }
 
+function listingQuery(name: string, domain: Domain, host?: string): { query: string; intent: string } {
+  const noun =
+    domain === "edtech" ? "course fee rating" : domain === "food" ? "menu price rating" : "product price rating";
+  const site = host ? `site:${host}` : "official website";
+  return {
+    query: `${name} ${noun} ${site}`,
+    intent: `Public ${noun} listings for ${name}. Prefer the official site. Exclude news, Amazon, Flipkart, price-history blogs.`,
+  };
+}
+
+async function scrapeViaDiscover(request: ScanRequest, rivalUrls: string[]): Promise<Snapshot> {
+  const brandUrl = ensureUrl(request.brandUrl);
+  const brandName = request.brandName?.trim() || hostnameLabel(brandUrl, "Brand");
+  const notes: string[] = [];
+  let rivals = rivalUrls.map((url) => ({
+    name: hostnameLabel(url, "Rival"),
+    url,
+  }));
+
+  if (rivals.length === 0 && discoverEnabled()) {
+    const found = await discoverRivals({
+      brandUrl,
+      brandName,
+      domain: request.domain,
+    });
+    notes.push(found.note);
+    if (geminiConfigured() && found.rivals.length > 0) {
+      try {
+        const picked = await pickBrandRivals(found.rivals);
+        rivals = picked.length ? picked : found.rivals.slice(0, 2);
+        notes.push(`Gemini Flash-Lite picked ${rivals.length} rival brand sites.`);
+      } catch (error) {
+        rivals = found.rivals.slice(0, 2);
+        notes.push(
+          `Rival pick fell back to Discover order: ${error instanceof Error ? error.message : "unknown"}`,
+        );
+      }
+    } else {
+      rivals = found.rivals.slice(0, 2);
+    }
+  }
+
+  const brandHost = (() => {
+    try {
+      return new URL(brandUrl).hostname.replace(/^www\./, "");
+    } catch {
+      return "";
+    }
+  })();
+
+  const items: Item[] = [];
+  const brandSearch = listingQuery(brandName, request.domain, brandHost);
+  const brandHits = await discoverListings(brandSearch);
+  notes.push(`Discover listings for ${brandName}: ${brandHits.length} public snippets.`);
+  items.push(
+    ...(await extractCatalog({
+      source: "brand",
+      pageUrl: brandUrl,
+      domain: request.domain,
+      hits: brandHits,
+    })),
+  );
+
+  for (const rival of rivals.slice(0, 2)) {
+    let host = "";
+    try {
+      host = new URL(rival.url).hostname.replace(/^www\./, "");
+    } catch {
+      host = "";
+    }
+    const search = listingQuery(rival.name, request.domain, host);
+    const hits = await discoverListings(search);
+    notes.push(`Discover listings for ${rival.name}: ${hits.length} public snippets.`);
+    items.push(
+      ...(await extractCatalog({
+        source: "rival",
+        rivalName: rival.name,
+        pageUrl: rival.url,
+        domain: request.domain,
+        hits,
+      })),
+    );
+  }
+
+  if (items.length === 0) {
+    throw new Error("Gemini extracted no catalog rows from Discover snippets");
+  }
+
+  const snapshot: Snapshot = {
+    brand: {
+      name: brandName,
+      domain: request.domain,
+      url: brandUrl,
+      snapshot_at: new Date().toISOString(),
+    },
+    rivals,
+    items,
+    signals: [],
+    plays: [],
+    health: {
+      null_rate: 0,
+      last_heal: null,
+      collector_ids: ["discover_sync"],
+      broken_fields: [],
+    },
+    mode: "live",
+    notes: [
+      ...notes,
+      "Live path: Bright Data Discover (snippets only) + Gemini 3.1 Flash-Lite extraction. No page bodies downloaded.",
+    ],
+  };
+  return attachInsights(snapshot);
+}
+
 export async function runScan(request: ScanRequest): Promise<Snapshot> {
   const brandUrl = ensureUrl(request.brandUrl);
   let rivalUrls = request.rivalUrls.map(ensureUrl).filter(Boolean);
   const notes: string[] = [];
+  const liveDiscover = hasBrightDataToken() && geminiConfigured() && !request.forceMock;
+
+  if (liveCollectorsReady(request.domain) && process.env.USE_MOCK === "false") {
+    try {
+      const snapshot = await scrapeLive({ ...request, rivalUrls });
+      snapshot.plays = await polishPlays(snapshot.plays);
+      return snapshot;
+    } catch (error) {
+      notes.push(
+        `Studio scrape failed: ${error instanceof Error ? error.message : "unknown"}`,
+      );
+    }
+  }
+
+  if (liveDiscover) {
+    try {
+      const snapshot = await scrapeViaDiscover({ ...request, rivalUrls }, rivalUrls);
+      snapshot.notes = [...notes, ...snapshot.notes];
+      snapshot.plays = await polishPlays(snapshot.plays);
+      return snapshot;
+    } catch (error) {
+      notes.push(
+        `Live Discover+Gemini failed (${error instanceof Error ? error.message : "unknown"}). Using fixture catalog.`,
+      );
+    }
+  }
 
   if (rivalUrls.length === 0 && discoverEnabled()) {
     try {
@@ -158,56 +303,22 @@ export async function runScan(request: ScanRequest): Promise<Snapshot> {
     }
   }
 
-  const useMock =
-    request.forceMock ||
-    process.env.USE_MOCK !== "false" ||
-    !liveCollectorsReady(request.domain);
-
-  if (useMock) {
-    if (process.env.USE_MOCK !== "false") {
-      notes.push("Catalog is a demo fixture until Scraper Studio collector IDs exist.");
-    }
-    if (!liveCollectorsReady(request.domain)) {
-      notes.push("No discovery/PDP collector IDs yet — not calling /dca/trigger.");
-    }
-    const snapshot = buildMockSnapshot({
-      brandUrl,
-      brandName: request.brandName,
-      domain: request.domain,
-      rivalUrls,
-      notes,
-    });
-    try {
-      snapshot.plays = await polishPlays(snapshot.plays);
-    } catch (error) {
-      snapshot.notes.push(
-        `Gemini polish skipped: ${error instanceof Error ? error.message : "unknown error"}`,
-      );
-    }
-    return snapshot;
-  }
-
+  const snapshot = buildMockSnapshot({
+    brandUrl,
+    brandName: request.brandName,
+    domain: request.domain,
+    rivalUrls,
+    notes: [
+      ...notes,
+      "Catalog is a demo fixture until live extraction or Scraper Studio collectors succeed.",
+    ],
+  });
   try {
-    const snapshot = await scrapeLive({ ...request, rivalUrls });
-    snapshot.notes = [...notes, ...snapshot.notes];
-    try {
-      snapshot.plays = await polishPlays(snapshot.plays);
-    } catch (error) {
-      snapshot.notes.push(
-        `Gemini polish skipped: ${error instanceof Error ? error.message : "unknown error"}`,
-      );
-    }
-    return snapshot;
+    snapshot.plays = await polishPlays(snapshot.plays);
   } catch (error) {
-    return buildMockSnapshot({
-      brandUrl,
-      brandName: request.brandName,
-      domain: request.domain,
-      rivalUrls,
-      notes: [
-        ...notes,
-        `Live scrape failed (${error instanceof Error ? error.message : "unknown"}). Fell back to mock so the arena still renders.`,
-      ],
-    });
+    snapshot.notes.push(
+      `Gemini polish skipped: ${error instanceof Error ? error.message : "unknown error"}`,
+    );
   }
+  return snapshot;
 }

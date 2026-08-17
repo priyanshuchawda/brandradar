@@ -111,6 +111,49 @@ function queryFor(domain: Domain, brand: string): { query: string; intent: strin
   };
 }
 
+export async function discoverListings(input: {
+  query: string;
+  intent: string;
+}): Promise<Array<{ title: string; link: string; description: string }>> {
+  const apiToken = token();
+  if (!apiToken) return [];
+
+  const response = await fetch("https://api.brightdata.com/discover/sync", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      query: input.query,
+      intent: input.intent,
+      mode: "fast",
+      language: "en",
+      country: "IN",
+      format: "json",
+      remove_duplicates: true,
+      include_content: false,
+      include_images: false,
+      num_results: 8,
+    }),
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(`Discover ${response.status}: ${text.slice(0, 240)}`);
+  }
+  const payload = JSON.parse(text) as {
+    results?: Array<{ title?: string; link?: string; description?: string }>;
+  };
+  return (payload.results ?? [])
+    .filter((row) => row.link && row.title)
+    .filter((row) => !blocked(row.link ?? ""))
+    .map((row) => ({
+      title: row.title ?? "",
+      link: row.link ?? "",
+      description: row.description ?? "",
+    }));
+}
+
 export async function discoverRivals(input: {
   brandUrl: string;
   brandName?: string;

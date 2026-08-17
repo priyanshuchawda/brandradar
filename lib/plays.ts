@@ -223,3 +223,33 @@ export function domainNoun(domain: Domain): string {
   if (domain === "food") return "menu item";
   return "SKU";
 }
+
+export function computeKpis(snapshot: Snapshot) {
+  const brand = snapshot.items.filter((item) => item.source === "brand" && item.price !== null);
+  const rivals = snapshot.items.filter((item) => item.source === "rival" && item.price !== null);
+  const avg = (rows: typeof brand) =>
+    rows.length ? rows.reduce((sum, item) => sum + (item.price ?? 0), 0) / rows.length : null;
+  const avgRating = (rows: Snapshot["items"]) => {
+    const rated = rows.filter((item) => item.rating !== null);
+    return rated.length
+      ? rated.reduce((sum, item) => sum + (item.rating ?? 0), 0) / rated.length
+      : null;
+  };
+  const brandAvg = avg(brand);
+  const rivalAvg = avg(rivals);
+  return {
+    itemCount: snapshot.items.length,
+    brandAvgPrice: brandAvg,
+    rivalAvgPrice: rivalAvg,
+    priceIndex:
+      brandAvg !== null && rivalAvg && rivalAvg > 0
+        ? Number((brandAvg / rivalAvg).toFixed(2))
+        : null,
+    brandAvgRating: avgRating(snapshot.items.filter((item) => item.source === "brand")),
+    rivalAvgRating: avgRating(snapshot.items.filter((item) => item.source === "rival")),
+    promoShare:
+      snapshot.items.length === 0
+        ? 0
+        : snapshot.items.filter((item) => item.promo).length / snapshot.items.length,
+  };
+}

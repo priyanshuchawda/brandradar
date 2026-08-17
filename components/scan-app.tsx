@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { computeKpis } from "@/lib/plays";
 import type { Domain, Snapshot } from "@/lib/schema";
 
 type Status = {
-  mockForced: boolean;
   brightDataToken: boolean;
   discover: boolean;
   gemini: boolean;
@@ -12,22 +12,22 @@ type Status = {
   live: Record<Domain, boolean>;
 };
 
-const domains: Array<{ id: Domain; label: string; hint: string }> = [
-  { id: "ecommerce", label: "Ecommerce", hint: "PDP price, stock, rating" },
-  { id: "edtech", label: "Edtech", hint: "Course fee, hours, proof" },
-  { id: "food", label: "Food", hint: "Menu price, rating, stock" },
+const domains: Array<{ id: Domain; label: string }> = [
+  { id: "ecommerce", label: "Ecommerce" },
+  { id: "edtech", label: "Edtech" },
+  { id: "food", label: "Food" },
 ];
 
-function money(amount: number | null, currency: string): string {
-  if (amount === null) return "—";
+function money(amount: number | null, currency = "INR"): string {
+  if (amount === null || Number.isNaN(amount)) return "—";
   if (currency === "INR") return `₹${Math.round(amount).toLocaleString("en-IN")}`;
-  return `${currency} ${amount}`;
+  return `${currency} ${amount.toFixed(0)}`;
 }
 
 export function ScanApp() {
   const [status, setStatus] = useState<Status | null>(null);
-  const [brandUrl, setBrandUrl] = useState("https://lumina.example");
-  const [brandName, setBrandName] = useState("");
+  const [brandUrl, setBrandUrl] = useState("https://mamaearth.in");
+  const [brandName, setBrandName] = useState("Mamaearth");
   const [domain, setDomain] = useState<Domain>("ecommerce");
   const [rivalText, setRivalText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -95,7 +95,7 @@ export function ScanApp() {
       if (!response.ok) throw new Error("Heal failed");
       if (payload.snapshot) setSnapshot(payload.snapshot as Snapshot);
       setHealNote(
-        `${payload.status} · collector ${payload.collector_id}` +
+        `${payload.status} · ${payload.collector_id}` +
           (payload.note ? ` · ${payload.note}` : ""),
       );
       setHealPreview(payload.preview_result ?? null);
@@ -107,100 +107,82 @@ export function ScanApp() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-5 py-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="font-mono text-xs tracking-[0.22em] text-ping uppercase">
-            Into the Scrape-Verse
-          </p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">
-            BrandRadar
-          </h1>
-          <p className="mt-2 max-w-xl text-sm text-muted">
-            Drop in a public brand URL. See rivals. Get three growth plays. When
-            a layout breaks, the collector heals in place.
-          </p>
+    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-5 py-7">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-full border border-ping/30 bg-ping/10 font-mono text-sm text-ping">
+            BR
+          </span>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">BrandRadar</h1>
+            <p className="text-sm text-muted">
+              Public web data in. Three growth plays out.
+            </p>
+          </div>
         </div>
         <StatusStrip status={status} domain={domain} />
       </header>
 
       <form
         onSubmit={scan}
-        className="grid gap-4 rounded-2xl border border-line bg-panel/80 p-5 shadow-[0_0_0_1px_#ffffff08]"
+        className="grid gap-3 rounded-2xl border border-line bg-panel/70 p-4"
       >
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="grid gap-1.5 text-sm">
-            <span className="text-muted">Brand URL</span>
+        <div className="grid gap-3 md:grid-cols-[1.4fr_0.8fr_auto]">
+          <label className="grid gap-1 text-xs text-muted">
+            Brand URL
             <input
               required
               value={brandUrl}
               onChange={(event) => setBrandUrl(event.target.value)}
-              placeholder="https://yourbrand.com"
-              className="rounded-lg border border-line bg-[#0b0e14] px-3 py-2 outline-none ring-ping/40 focus:ring-2"
+              className="rounded-lg border border-line bg-[#0b0e14] px-3 py-2 text-sm text-text outline-none focus:border-ping/50"
             />
           </label>
-          <label className="grid gap-1.5 text-sm">
-            <span className="text-muted">Brand name (optional)</span>
+          <label className="grid gap-1 text-xs text-muted">
+            Name
             <input
               value={brandName}
               onChange={(event) => setBrandName(event.target.value)}
-              placeholder="Lumina"
-              className="rounded-lg border border-line bg-[#0b0e14] px-3 py-2 outline-none ring-ping/40 focus:ring-2"
+              placeholder="Mamaearth"
+              className="rounded-lg border border-line bg-[#0b0e14] px-3 py-2 text-sm text-text outline-none focus:border-ping/50"
             />
           </label>
-        </div>
-
-        <div className="grid gap-2">
-          <span className="text-sm text-muted">Domain</span>
-          <div className="flex flex-wrap gap-2">
-            {domains.map((entry) => (
-              <button
-                key={entry.id}
-                type="button"
-                onClick={() => setDomain(entry.id)}
-                className={`rounded-full border px-3 py-1.5 text-sm ${
-                  domain === entry.id
-                    ? "border-ping bg-ping/10 text-ping"
-                    : "border-line text-muted hover:text-text"
-                }`}
-              >
-                {entry.label}
-                <span className="ml-2 text-xs opacity-70">{entry.hint}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <label className="grid gap-1.5 text-sm">
-          <span className="text-muted">
-            Rival URLs (optional, one per line). Empty = demo rivals.
-          </span>
-          <textarea
-            value={rivalText}
-            onChange={(event) => setRivalText(event.target.value)}
-            rows={3}
-            placeholder="https://rival-a.com&#10;https://rival-b.com"
-            className="rounded-lg border border-line bg-[#0b0e14] px-3 py-2 font-mono text-xs outline-none ring-ping/40 focus:ring-2"
-          />
-        </label>
-
-        <div className="flex flex-wrap items-center gap-3">
           <button
             type="submit"
             disabled={loading}
-            className="rounded-lg bg-ping px-4 py-2 text-sm font-semibold text-[#062016] disabled:opacity-50"
+            className="self-end rounded-lg bg-ping px-5 py-2 text-sm font-semibold text-[#062016] disabled:opacity-50"
           >
-            {loading ? "Scanning…" : "Scan the arena"}
+            {loading ? "Scanning…" : "Scan arena"}
           </button>
-          <p className="text-xs text-muted">
-            Public pages only. No login, paywall, or personal data.
-          </p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {domains.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              onClick={() => setDomain(entry.id)}
+              className={`rounded-full border px-3 py-1 text-xs ${
+                domain === entry.id
+                  ? "border-ping bg-ping/10 text-ping"
+                  : "border-line text-muted"
+              }`}
+            >
+              {entry.label}
+            </button>
+          ))}
+          <span className="text-xs text-muted">Public pages only.</span>
+        </div>
+        <textarea
+          value={rivalText}
+          onChange={(event) => setRivalText(event.target.value)}
+          rows={2}
+          placeholder="Rival URLs optional — one per line. Empty = Bright Data Discover."
+          className="rounded-lg border border-line bg-[#0b0e14] px-3 py-2 font-mono text-xs text-muted outline-none focus:border-ping/50"
+        />
         {error ? <p className="text-sm text-alert">{error}</p> : null}
       </form>
 
       {snapshot ? (
-        <Arena
+        <Dashboard
           snapshot={snapshot}
           loading={loading}
           healNote={healNote}
@@ -209,7 +191,9 @@ export function ScanApp() {
           onHeal={() => heal("heal")}
           onApprove={() => heal("approve")}
         />
-      ) : null}
+      ) : (
+        <EmptyState />
+      )}
     </div>
   );
 }
@@ -223,11 +207,10 @@ function StatusStrip({
 }) {
   if (!status) return null;
   return (
-    <div className="flex flex-wrap gap-2 font-mono text-[11px]">
+    <div className="flex flex-wrap justify-end gap-2 font-mono text-[11px]">
       <Pill ok={status.discover} label="discover" />
-      <Pill ok={status.live[domain]} label={status.live[domain] ? "studio live" : "studio mock"} />
-      <Pill ok={status.brightDataToken} label="bright data" />
-      <Pill ok={status.gemini} label={status.geminiModel ?? "gemini"} />
+      <Pill ok={status.gemini} label={status.geminiModel?.replace("gemini-", "") ?? "gemini"} />
+      <Pill ok={status.live[domain]} label={status.live[domain] ? "studio" : "no studio"} />
     </div>
   );
 }
@@ -244,7 +227,24 @@ function Pill({ ok, label }: { ok: boolean; label: string }) {
   );
 }
 
-function Arena({
+function EmptyState() {
+  return (
+    <div className="grid flex-1 place-items-center rounded-2xl border border-dashed border-line py-20 text-center">
+      <div className="max-w-md">
+        <p className="font-mono text-xs tracking-[0.2em] text-ping uppercase">
+          Ready
+        </p>
+        <h2 className="mt-2 text-xl font-semibold">Scan a public brand</h2>
+        <p className="mt-2 text-sm text-muted">
+          Bright Data finds rivals and listings. Gemini Flash-Lite extracts the
+          catalog and writes the plays. Numbers stay grounded in the snippets.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Dashboard({
   snapshot,
   loading,
   healNote,
@@ -261,47 +261,56 @@ function Arena({
   onHeal: () => void;
   onApprove: () => void;
 }) {
+  const kpis = computeKpis(snapshot);
+  const currency = snapshot.items[0]?.currency ?? "INR";
+
   return (
     <section className="grid gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">
-            {snapshot.brand.name}{" "}
-            <span className="text-muted">vs {snapshot.rivals.map((r) => r.name).join(", ")}</span>
-          </h2>
-          <p className="text-xs text-muted">
-            {snapshot.mode} · {snapshot.brand.domain} · {snapshot.brand.snapshot_at}
+          <h2 className="text-xl font-semibold">{snapshot.brand.name}</h2>
+          <p className="text-sm text-muted">
+            vs {snapshot.rivals.map((rival) => rival.name).join(" · ") || "no rivals yet"}
           </p>
         </div>
         <span
-          className={`rounded-full px-3 py-1 text-xs ${
-            snapshot.health.null_rate > 0
-              ? "bg-alert/15 text-alert"
-              : "bg-ping/10 text-ping"
+          className={`rounded-full px-3 py-1 font-mono text-xs ${
+            snapshot.mode === "live" ? "bg-ping/10 text-ping" : "bg-warn/10 text-warn"
           }`}
         >
-          null-rate {(snapshot.health.null_rate * 100).toFixed(0)}%
+          {snapshot.mode}
         </span>
       </div>
 
-      {snapshot.notes.length > 0 ? (
-        <ul className="grid gap-1 rounded-xl border border-line bg-panel px-4 py-3 text-xs text-muted">
-          {snapshot.notes.map((note) => (
-            <li key={note}>{note}</li>
-          ))}
-        </ul>
-      ) : null}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Kpi label="Price index" value={kpis.priceIndex ? `${kpis.priceIndex}×` : "—"} hint="brand / rival avg" />
+        <Kpi label="Brand avg" value={money(kpis.brandAvgPrice, currency)} hint={`${kpis.itemCount} rows`} />
+        <Kpi
+          label="Rating"
+          value={
+            kpis.brandAvgRating
+              ? `${kpis.brandAvgRating.toFixed(1)} vs ${kpis.rivalAvgRating?.toFixed(1) ?? "—"}`
+              : "—"
+          }
+          hint="brand vs rival"
+        />
+        <Kpi
+          label="Null rate"
+          value={`${Math.round(snapshot.health.null_rate * 100)}%`}
+          hint={snapshot.health.broken_fields.join(", ") || "fields intact"}
+        />
+      </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-3 lg:grid-cols-3">
         {snapshot.plays.map((play, index) => (
           <article
             key={`${play.title}-${index}`}
             className="rounded-2xl border border-line bg-panel p-4"
           >
             <p className="font-mono text-[11px] uppercase tracking-wider text-ping">
-              Play 0{index + 1} · {play.signal_type.replace("_", " ")}
+              Play 0{index + 1}
             </p>
-            <h3 className="mt-2 text-base font-semibold">{play.title}</h3>
+            <h3 className="mt-2 text-base font-semibold leading-snug">{play.title}</h3>
             <p className="mt-2 text-sm text-muted">{play.evidence}</p>
             <p className="mt-3 text-sm">{play.action}</p>
           </article>
@@ -310,52 +319,45 @@ function Arena({
 
       <div className="overflow-x-auto rounded-2xl border border-line">
         <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="bg-panel text-xs uppercase tracking-wider text-muted">
+          <thead className="bg-panel text-[11px] uppercase tracking-wider text-muted">
             <tr>
-              <th className="px-3 py-2">Source</th>
-              <th className="px-3 py-2">Item</th>
-              <th className="px-3 py-2">Price</th>
-              <th className="px-3 py-2">Rating</th>
-              <th className="px-3 py-2">Stock</th>
-              <th className="px-3 py-2">Promo</th>
+              <th className="px-4 py-2.5">Source</th>
+              <th className="px-4 py-2.5">Item</th>
+              <th className="px-4 py-2.5">Price</th>
+              <th className="px-4 py-2.5">Rating</th>
+              <th className="px-4 py-2.5">Stock</th>
+              <th className="px-4 py-2.5">Promo</th>
             </tr>
           </thead>
           <tbody>
             {snapshot.items.map((item) => (
-              <tr key={`${item.source}-${item.url}`} className="border-t border-line">
-                <td className="px-3 py-2 text-xs text-muted">
+              <tr key={`${item.source}-${item.url}-${item.name}`} className="border-t border-line">
+                <td className="px-4 py-2.5 text-xs text-muted">
                   {item.source === "brand" ? snapshot.brand.name : item.rival_name}
                 </td>
-                <td className="px-3 py-2">{item.name}</td>
-                <td className="px-3 py-2 font-mono">
-                  {money(item.price, item.currency)}
-                </td>
-                <td className="px-3 py-2 font-mono">
+                <td className="px-4 py-2.5">{item.name}</td>
+                <td className="px-4 py-2.5 font-mono">{money(item.price, item.currency)}</td>
+                <td className="px-4 py-2.5 font-mono">
                   {item.rating ?? "—"}
                   {item.review_count ? (
                     <span className="text-muted"> ({item.review_count})</span>
                   ) : null}
                 </td>
-                <td className="px-3 py-2 text-xs">{item.availability}</td>
-                <td className="px-3 py-2 text-xs">{item.promo ? "yes" : "no"}</td>
+                <td className="px-4 py-2.5 text-xs">{item.availability.replace("_", " ")}</td>
+                <td className="px-4 py-2.5 text-xs">{item.promo ? "yes" : "—"}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <div className="rounded-2xl border border-dashed border-line bg-panel/60 p-4">
+      <div className="rounded-2xl border border-line bg-panel/50 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="font-semibold">Scraper health</h3>
+            <h3 className="text-sm font-semibold">Collector health</h3>
             <p className="text-xs text-muted">
-              Collectors: {snapshot.health.collector_ids.join(", ") || "none"}
-              {snapshot.health.last_heal
-                ? ` · last heal ${snapshot.health.last_heal}`
-                : ""}
-              {snapshot.health.broken_fields.length
-                ? ` · broken: ${snapshot.health.broken_fields.join(", ")}`
-                : ""}
+              {snapshot.health.collector_ids.join(" · ")}
+              {snapshot.health.last_heal ? ` · healed ${snapshot.health.last_heal}` : ""}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -363,29 +365,36 @@ function Arena({
               type="button"
               disabled={loading}
               onClick={onBreak}
-              className="rounded-lg border border-alert/40 px-3 py-1.5 text-xs text-alert disabled:opacity-50"
+              className="rounded-lg border border-alert/30 px-3 py-1.5 text-xs text-alert disabled:opacity-50"
             >
-              Simulate redesign
+              Break field
             </button>
             <button
               type="button"
               disabled={loading}
               onClick={onHeal}
-              className="rounded-lg border border-warn/40 px-3 py-1.5 text-xs text-warn disabled:opacity-50"
+              className="rounded-lg border border-warn/30 px-3 py-1.5 text-xs text-warn disabled:opacity-50"
             >
-              Heal in place
+              Heal
             </button>
             <button
               type="button"
               disabled={loading}
               onClick={onApprove}
-              className="rounded-lg border border-ping/40 px-3 py-1.5 text-xs text-ping disabled:opacity-50"
+              className="rounded-lg border border-ping/30 px-3 py-1.5 text-xs text-ping disabled:opacity-50"
             >
-              Approve heal
+              Approve
             </button>
           </div>
         </div>
-        {healNote ? <p className="mt-3 font-mono text-xs text-muted">{healNote}</p> : null}
+        {snapshot.notes.length > 0 ? (
+          <ul className="mt-3 grid gap-1 text-xs text-muted">
+            {snapshot.notes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
+        ) : null}
+        {healNote ? <p className="mt-2 font-mono text-xs text-muted">{healNote}</p> : null}
         {healPreview ? (
           <pre className="mt-3 overflow-x-auto rounded-lg bg-[#0b0e14] p-3 font-mono text-[11px] text-muted">
             {JSON.stringify(healPreview, null, 2)}
@@ -393,5 +402,23 @@ function Arena({
         ) : null}
       </div>
     </section>
+  );
+}
+
+function Kpi({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-line bg-panel p-4">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tracking-tight">{value}</p>
+      <p className="mt-1 text-[11px] text-muted">{hint}</p>
+    </div>
   );
 }

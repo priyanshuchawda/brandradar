@@ -23,7 +23,6 @@ export async function POST(request: Request) {
 
 export async function GET() {
   return NextResponse.json({
-    mockForced: process.env.USE_MOCK !== "false",
     brightDataToken: Boolean(process.env.BRIGHT_DATA_API_TOKEN?.trim()),
     discover: discoverEnabled(),
     gemini: geminiConfigured(),
