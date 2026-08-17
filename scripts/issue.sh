@@ -22,4 +22,8 @@ if [[ -z "$BODY" ]]; then
   exit 1
 fi
 
-gh issue create --title "$TITLE" --body "$BODY"
+# REST, not GraphQL — gh issue create 503s on this account sometimes.
+gh api -X POST "/repos/{owner}/{repo}/issues" \
+  -f title="$TITLE" \
+  -f body="$BODY" \
+  --jq .html_url

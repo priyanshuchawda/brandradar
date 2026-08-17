@@ -23,5 +23,11 @@ if [[ -z "$BODY" ]]; then
   exit 1
 fi
 
-gh pr create --title "$TITLE" --base "$BASE" --body "$BODY"
-gh pr view --json url --jq .url
+# REST, not GraphQL — gh pr create 503s on this account sometimes.
+HEAD_BRANCH="$(git branch --show-current)"
+gh api -X POST "/repos/{owner}/{repo}/pulls" \
+  -f title="$TITLE" \
+  -f head="$HEAD_BRANCH" \
+  -f base="$BASE" \
+  -f body="$BODY" \
+  --jq .html_url
