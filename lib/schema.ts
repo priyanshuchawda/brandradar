@@ -62,7 +62,7 @@ export const SnapshotSchema = z.object({
       url: z.string(),
     }),
   ),
-  items: z.array(ItemSchema),
+  items: z.array(ItemSchema).max(40),
   signals: z.array(SignalSchema),
   plays: z.array(PlaySchema),
   health: z.object({
@@ -81,10 +81,10 @@ export type Play = z.infer<typeof PlaySchema>;
 export type Snapshot = z.infer<typeof SnapshotSchema>;
 
 export const ScanRequestSchema = z.object({
-  brandUrl: z.string().min(1),
-  brandName: z.string().optional(),
+  brandUrl: z.string().min(1).max(2048),
+  brandName: z.string().max(80).optional(),
   domain: DomainSchema,
-  rivalUrls: z.array(z.string()).default([]),
+  rivalUrls: z.array(z.string().max(2048)).max(5).default([]),
   forceMock: z.boolean().optional(),
 });
 

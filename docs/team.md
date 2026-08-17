@@ -1,32 +1,8 @@
-# Team notes
+# Contributors
 
-From the Scrape-Verse WhatsApp group (17 Aug 2026) plus the hackathon about page.
+- Priyanshu Chawda — product, pipeline, repository
+- Aditya Gayal — domain scope
+- Vaishnavi Repal — domain-agnostic CI framing
+- Sneha Barge — vertical prototype (ecommerce, edtech, food)
 
-## People
-
-- Priyanshu Chawda (repo owner)
-- Aditya Gayal
-- Vaishnavi Repal
-- Sneha Barge
-
-## What the team already agreed
-
-- Not a single-brand toy. **Any brand** in a domain should be able to compare against competitors (Vaishnavi).
-- Frame: **competitive intelligence** (Sneha).
-- Prototype: **2–3 domains** because of limited time/resources (Aditya + Sneha).
-- Candidate domains: **ecommerce, food, edtech, fintech**.
-- Priyanshu took the "set up / extract / write this down" action.
-
-## How that became BrandRadar
-
-The official idea list already has "Competitive intelligence" and "Price and inventory intelligence". The about page also wants a **functional app** that produces **insights**, not a scraper dump. Self-healing is the event's actual theme.
-
-So: domain-agnostic CI product, two demo verticals, growth plays as the insight layer, Scraper Studio collectors + heal as the engine.
-
-## Still to confirm in the group
-
-- [ ] Name: BrandRadar (working)
-- [ ] Two locked domains (recommendation: ecommerce + edtech)
-- [ ] Seed brands with public listing + PDP pages
-- [ ] Who does UI / collectors / plays
-- [ ] Flip this repo to **public** before submit (rules require a public repo)
+BrandRadar is built as a category-agnostic competitive intelligence product. Ecommerce, edtech, and food are the first three verticals because they have public listing + detail pages. Fintech is deferred: too much sits behind login.

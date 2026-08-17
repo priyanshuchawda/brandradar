@@ -1,106 +1,89 @@
 # BrandRadar
 
-**Competitive intelligence that tells a brand what to do next.**
+Competitive intelligence for brands that do not have a research team.
 
-BrandRadar is our project for [Into the Scrape-Verse](https://www.wemakedevs.org/hackathons/scrape-verse) (WeMakeDevs × Bright Data, 17–23 Aug 2026). A brand drops in its public site. We discover rivals in the same domain, collect public catalog / price / rating / promo data with **custom Bright Data Scraper Studio collectors**, and turn gaps into growth plays. When a competitor redesigns their site, the collector **self-heals** and the dashboard keeps moving.
+Paste a public storefront. BrandRadar finds rivals, collects catalog / price / rating / availability from public pages, and returns **three growth plays** with evidence. When a competitor redesigns a page, the same scraper repairs in place so the arena does not go blank.
 
-> Any brand, any domain. Prototype ships with **ecommerce**, **edtech**, and **food**. Fintech stays a stretch domain (too much is login-walled).
->
-> **Stack (locked):** full TypeScript — Next.js App Router, Tailwind, server-side Bright Data Collection API. No Python in the product. Details in [docs/stack.md](docs/stack.md).
+See the market. Heal the scraper. Grow the brand.
 
-## Problem
+## What it does
 
-Growing brands lose share to competitors they cannot see in real time. Prices, SKUs, course fees, menu items, and public reviews change daily. Most teams still check this by hand, or with scrapers that silently die after a class-name change. BrandRadar is the always-on arena: **see the market, heal the scraper, grow the brand.**
+1. **Discover** rival brand sites in the same category (ecommerce, edtech, or food).
+2. **Collect** structured rows with custom Bright Data Scraper Studio collectors (listing + product detail).
+3. **Compare** brand vs rivals on a shared schema.
+4. **Recommend** three plays (price gap, rating gap, promo, catalog hole, stock window).
+5. **Repair** extractors when a field comes back null — same collector id, preview, then approve.
 
-## AI disclosure
+Numbers come from extracted rows. Language models only rewrite play copy. They do not invent prices.
 
-Cursor, Bright Data Scraper Studio (AI Agent / CLI), and Gemini 3.1 Flash-Lite were used. We can explain the scraper, architecture, and every API call. Details: [docs/scraper-studio.md](docs/scraper-studio.md).
+## Stack
 
-## What judges should see
+Next.js App Router, TypeScript, Tailwind, Zod. Bright Data Collection API and Discover run **only on the server**. Gemini 3.1 Flash-Lite is optional.
 
-| Criterion | How we hit it |
-| --- | --- |
-| Impact | A founder/marketer gets 3 concrete growth plays, not a CSV |
-| Creativity | Domain-agnostic CI + action engine, not a price table |
-| Technical excellence | App + pipeline + structured output, not a notebook |
-| Scraper Studio | Custom collectors (`c_*`), not library scrapers |
-| Self-healing | Heal when a field goes null; same collector ID; data continues |
-| Presentation | 90-second demo: brand in → rivals → plays → heal |
+Details: [docs/stack.md](docs/stack.md) · [docs/architecture.md](docs/architecture.md) · [docs/security.md](docs/security.md)
 
-## Team
-
-| Person | Role (working) |
-| --- | --- |
-| Priyanshu Chawda | Repo, product, scraper pipeline |
-| Aditya Gayal | Scope / domains |
-| Vaishnavi Repal | Domain-agnostic CI framing |
-| Sneha Barge | Prototype: 2–3 domains |
-
-## Run the app
+## Run locally
 
 ```bash
-cd brandradar
-cp .env.example .env.local   # keys optional for now
+cp .env.example .env.local
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). **Load demo snapshot** is instant (fixture). **Scan arena** hits Studio when collector ids are set (`USE_MOCK=false`) and can take 30–90s.
+Open [http://localhost:3000](http://localhost:3000).
+
+| Action | What happens |
+| --- | --- |
+| **Load demo snapshot** | Instant fixture. Disabled when `ALLOW_DEMO_FIXTURE=false` (production default). |
+| **Scan arena** | Live collection. Needs Bright Data token + collector ids. Typically 30–90s. |
 
 ```bash
 npm test
-npm run test:coverage   # unit coverage of plays / mapping / heal (~90% of those files)
+npm run test:coverage
 npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000). With Bright Data + Gemini keys, Discover + Flash-Lite return a **live** catalog. Custom Scraper Studio collectors (`c_*` in `.env.local`) are the scored path: create with `scripts/studio-create.sh`, then set `USE_MOCK=false`. Heal/approve from the dashboard or `scripts/studio.sh`.
+## Configuration
 
-GitHub (scripts only — do not `git push` / `gh pr` / `gh issue` by hand):
+Put secrets in `.env.local`. Never commit them.
 
-```bash
-chmod +x scripts/*.sh
-scripts/push.sh "Commit message here."
-scripts/issue.sh "Issue title" <<'EOF'
-Body
-EOF
-scripts/pr.sh "PR title" <<'EOF'
-## Summary
-- ...
-EOF
-```
-
-Identity stays the existing local git user (`priyanshuchawda`). The scripts never run `git config`.
-
-Keys (paste into `.env.local` when asked):
-
-- `BRIGHT_DATA_API_TOKEN` + collector ids `c_*` — live scrape
-- `GEMINI_API_KEY` — optional rewrite of play copy (numbers stay rule-based)
-
-Do not commit `.env.local`.
-
-## Repo map
-
-| Path | What it is |
+| Variable | Purpose |
 | --- | --- |
-| [docs/problem-and-idea.md](docs/problem-and-idea.md) | Problem statement, product, why this wins |
-| [docs/stack.md](docs/stack.md) | Why full TypeScript, not Python |
-| [docs/architecture.md](docs/architecture.md) | App + collectors + self-heal loop |
-| [docs/hackathon.md](docs/hackathon.md) | Extracted hackathon brief, rules, prizes, judging |
-| [docs/scraper-studio.md](docs/scraper-studio.md) | How Scraper Studio is used (judges) |
-| [examples/studio-pdp-row.json](examples/studio-pdp-row.json) | Real Studio PDP extraction (Mamaearth vitamin C) |
-| [prompts/cursor.md](prompts/cursor.md) | Copy-paste prompts for Cursor / Claude Code / Codex |
-| [scripts/](scripts/) | `push.sh` / `pr.sh` / `issue.sh` / `studio.sh` / `studio-create.sh` |
+| `BRIGHT_DATA_API_TOKEN` | Discover + Collection API |
+| `COLLECTOR_*_DISCOVERY` / `COLLECTOR_*_PDP` | Scraper Studio collector ids (`c_*`) |
+| `USE_MOCK=false` | Prefer Studio collectors when ids exist |
+| `GEMINI_API_KEY` | Optional play-copy rewrite |
+| `BRANDRADAR_API_KEY` | Optional bearer/API key on mutating routes |
+| `ALLOW_DEMO_FIXTURE` | `true`/`false`. Unset = allowed outside production |
 
-## Hard rules we will not break
+Create collectors with `scripts/studio-create.sh`. Run / heal / approve with `scripts/studio.sh`. See [docs/collectors.md](docs/collectors.md).
 
-- Custom **Scraper Studio** scraper. Library scrapers alone = disqualified.
-- **Public** web data only. No login, paywall, personal, or restricted data.
-- Main coding starts this week (kickoff is 17 Aug 2026). Planning in this repo is allowed.
-- Submission (later) needs a **public** repo, README, sample structured output, demo video, and a Scraper Studio write-up.
-- Disclose AI tool use. We must be able to explain the scraper, architecture, and decisions.
+## HTTP API
 
-## Credits
+| Method | Path | Limits |
+| --- | --- | --- |
+| `GET` | `/api/scan` | Status only. 60 req / min / IP |
+| `POST` | `/api/scan` | Live scan. 8 req / 15 min / IP. HTTPS public URLs only |
+| `POST` | `/api/heal` | Break / heal / approve. 20 req / 15 min / IP |
 
-Sign up at [brdta.com/wemakedevs](https://brdta.com/wemakedevs). In Bright Data billing, enter promo code `wemakedevs` (lowercase). $50 credits + 5,000/month free tier.
+Scan body: `{ brandUrl, brandName?, domain, rivalUrls?, forceMock? }`. `domain` is `ecommerce` \| `edtech` \| `food`. At most five rival URLs. Example output: [examples/sample-output.json](examples/sample-output.json).
 
-Stuck: [WeMakeDevs Discord](https://discord.gg/wemakedevs) · [contact@wemakedevs.org](mailto:contact@wemakedevs.org)
+## Repository
+
+| Path | Contents |
+| --- | --- |
+| [docs/product.md](docs/product.md) | Problem, users, plays |
+| [docs/architecture.md](docs/architecture.md) | Pipeline and components |
+| [docs/collectors.md](docs/collectors.md) | Scraper Studio collectors and self-heal |
+| [docs/security.md](docs/security.md) | Auth, rate limits, URL policy, headers |
+| [docs/stack.md](docs/stack.md) | Language and vendor choices |
+| [examples/](examples/) | Canonical snapshot + a live PDP row |
+| [scripts/](scripts/) | Git helpers and Studio CLI wrappers |
+
+## Data policy
+
+Public HTTPS pages only. No logins, paywalls, personal data, or private networks. Marketplace library scrapers (Amazon, LinkedIn, and similar) are not the product extractor.
+
+## Contributors
+
+Priyanshu Chawda, Aditya Gayal, Vaishnavi Repal, Sneha Barge.

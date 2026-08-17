@@ -1,6 +1,8 @@
-# Into the Scrape-Verse — extracted brief
+# Event notes (historical)
 
-Source: [wemakedevs.org/hackathons/scrape-verse](https://www.wemakedevs.org/hackathons/scrape-verse) and subpages. Extracted 17 Aug 2026. Not affiliated with Marvel/Sony; theme is creative only.
+Internal extract of Into the Scrape-Verse. Product documentation lives in [product.md](product.md), [architecture.md](architecture.md), and [security.md](security.md).
+
+Source: [wemakedevs.org/hackathons/scrape-verse](https://www.wemakedevs.org/hackathons/scrape-verse). Extracted 17 Aug 2026. Not affiliated with Marvel/Sony; theme is creative only.
 
 ## Snapshot
 

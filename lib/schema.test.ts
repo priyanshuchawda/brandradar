@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { ScanRequestSchema, SnapshotSchema } from "./schema";
 
 describe("SnapshotSchema", () => {
-  it("accepts the judge sample output", () => {
+  it("accepts the canonical sample output", () => {
     const raw = JSON.parse(
       readFileSync(new URL("../examples/sample-output.json", import.meta.url), "utf8"),
     );

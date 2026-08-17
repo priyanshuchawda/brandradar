@@ -1,106 +1,59 @@
-# Architecture (plan)
-
-Planning is allowed before/during kickoff. Implementation starts this week.
+# Architecture
 
 ```
-[Brand URL + domain]
+Public brand URL + domain
         │
         ▼
-┌───────────────────┐     Bright Data Scraper Studio
-│  BrandRadar app   │     custom collectors (c_*)
-│  Next.js + TS     │◄──── Discovery / Search / PDP
-│  (full stack)     │     + self-heal on null fields
-│  Arena + plays    │
-└─────────┬─────────┘
-          │ structured JSON
-          ▼
-   snapshots/ (example output)
+┌──────────────────────────┐     Bright Data (server only)
+│  BrandRadar              │     Discover  → rival homepages
+│  Next.js App Router      │     Studio    → listing + PDP rows
+│  TypeScript + Zod        │     Heal      → same collector id
+│  Arena, plays, health    │
+└────────────┬─────────────┘
+             │ BrandSnapshot JSON
+             ▼
+     rules → 3 plays  (optional Gemini copy rewrite)
 ```
 
-## Collectors (custom, required)
+## Components
 
-Each collector is one shape. Do not ask one scraper for "the whole site".
+| Piece | Role |
+| --- | --- |
+| `components/scan-app.tsx` | Arena UI |
+| `app/api/scan` | Status + scan. Validates URLs, rate-limits, runs the pipeline |
+| `app/api/heal` | Break / heal / approve. Mock locally; Studio CLI when a real `c_*` is present |
+| `lib/scan.ts` | Studio first (if ready), else Discover + Gemini extract, else fixture |
+| `lib/brightdata.ts` | `POST /dca/trigger` then poll `GET /dca/dataset` |
+| `lib/discover.ts` | Fast Discover, 5 hits, no page body, 6 hour cache |
+| `lib/plays.ts` | Signals and plays. Deterministic |
+| `lib/map-item.ts` | Studio row → `Item` |
+| `lib/guard.ts` / `lib/rate-limit.ts` / `lib/urls.ts` | Auth, quotas, public HTTPS policy |
 
-| Collector | Type | Input | Output fields (target) |
-| --- | --- | --- | --- |
-| `discovery` | Discovery or Search | category URL or keyword | name, url, price, rating, position, promo_flag |
-| `pdp` | PDP | product/course/menu-item URL | name, brand, price, list_price, availability, rating, review_count, description, image_url |
-| `heal` | same `c_*` | plain-language fix | schema extended or selectors rewritten |
+Tokens never leave the server. The browser only talks to `/api/*`.
 
-Pin IDs in `.env` once created:
+## Live collection
 
-```
-COLLECTOR_ECOMMERCE_DISCOVERY=c_...
-COLLECTOR_ECOMMERCE_PDP=c_...
-```
+1. Validate the brand URL (HTTPS, public host).
+2. Discovery collector on listing URLs (Mamaearth homepage is mapped to `/shop`).
+3. Take up to **eight** product URLs.
+4. PDP collector for prices and ratings (listing mashups are not trusted).
+5. `attachInsights` → at most three plays.
+6. Optional Flash-Lite rewrite of play text.
 
-Reuse them. Do not create a new scraper every session.
+If Studio is not configured or fails, Discover snippets + Gemini extraction run next. If that fails, a labeled fixture is returned (development only unless `ALLOW_DEMO_FIXTURE=true`).
 
-## Data flow
+## Self-heal
 
-1. User submits brand URL + domain.
-2. App (or CLI) runs discovery on the brand category page and 2–4 rival category pages.
-3. App takes top N item URLs, runs PDP collector.
-4. Normalize into `BrandSnapshot` (see `examples/sample-output.json`).
-5. Diff brand vs rivals → signals → 3 plays.
-6. Health: if key fields are null, trigger `bdata scraper heal`, show preview, approve, re-run. Collector ID does not change.
-
-## Self-heal (must be in the demo)
-
-Happy path from Bright Data:
+Heal keeps the collector id stable:
 
 ```bash
-npx -p @brightdata/cli bdata scraper heal $COLLECTOR_ID \
-  "The price field returns null since the redesign. Re-capture it." \
-  --url https://example.com/product/...
-
-npx -p @brightdata/cli bdata scraper approve $COLLECTOR_ID \
-  --url https://example.com/product/...
-
-npx -p @brightdata/cli bdata scraper run $COLLECTOR_ID \
-  https://example.com/product/... --pretty
+scripts/studio.sh heal "$COLLECTOR_ID" "<public-url>" "<what broke>"
+scripts/studio.sh approve "$COLLECTOR_ID" "<public-url>"
+scripts/studio.sh run "$COLLECTOR_ID" "<public-url>"
 ```
 
-In the product: a **Scraper health** panel — last run, null-rate, Heal button, preview JSON, Approve. This is the Spider-Sense / Best Use of Bright Data moment.
+The health panel is the same loop. Mock snapshots never shell out to Studio.
 
-## App sketch (week-sized)
+## Persistence
 
-- **Web app:** Next.js App Router, TypeScript only. See [stack.md](stack.md).
-- Screens: onboarding (URL + domain) → arena (comparison) → plays → health.
-- Server routes call Collection API (`POST /dca/trigger` + poll `/dca/dataset`). Port of the [official Node starter](https://github.com/brightdata/bright-data-scraper-studio-nodejs-project).
-- Snapshots as JSON under `data/`. Token stays on the server.
-
-## Stack (locked)
-
-Full TypeScript. Bright Data’s Python starter is the same HTTP calls; we are not using it. CLI + self-heal demo + Best UI all point at one Node/TS app.
-
-| Layer | Choice |
-| --- | --- |
-| App | Next.js (App Router) + TypeScript |
-| UI | Tailwind + shadcn/ui |
-| Run collectors | Collection API in `lib/brightdata.ts` (server-only) |
-| Create / heal | `npx @brightdata/cli` (`bdata scraper create \| heal \| approve`) |
-| Schema | Zod (`BrandSnapshot`) |
-| Store | JSON files (`data/`) |
-| Insights | Deterministic rules, optional LLM copy rewrite |
-
-## Week plan
-
-| Day | Outcome |
-| --- | --- |
-| 17 Mon | Repo, idea lock, Bright Data signup + credits, first collector created |
-| 18 Tue | Kickoff 15:00 UTC. Discovery + PDP collectors for ecommerce seed |
-| 19 Wed | Second domain collector. Snapshot schema + sample output committed |
-| 20 Thu | Arena UI with real JSON. Health panel wired to heal/approve |
-| 21 Fri | Growth plays. Polish. LinkedIn post (Daily Bugle) |
-| 22 Sat | Demo video, README, Scraper Studio write-up. SF in-person optional |
-| 23 Sun | Submit: public repo (flip visibility), video, structured output |
-
-## Submission checklist (from rules)
-
-- [ ] Public source-code repository (this repo is private until submit)
-- [ ] Clear README
-- [ ] Example structured output
-- [ ] Demo video of the working project
-- [ ] Explanation of how Scraper Studio is used
-- [ ] Disclose AI coding tools
+Discover responses cache under `data/cache/` (gitignored, 6 hours). Raw Studio create dumps go to `data/raw/` (gitignored). There is no database in this revision.

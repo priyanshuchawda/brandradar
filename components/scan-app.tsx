@@ -11,6 +11,7 @@ type Status = {
   gemini: boolean;
   geminiModel?: string;
   live: Record<Domain, boolean>;
+  demoFixture?: boolean;
 };
 
 const domains: Array<{ id: Domain; label: string }> = [
@@ -18,6 +19,21 @@ const domains: Array<{ id: Domain; label: string }> = [
   { id: "edtech", label: "Edtech" },
   { id: "food", label: "Food" },
 ];
+
+function apiError(payload: unknown, fallback: string, status: number): Error {
+  if (status === 429) {
+    const message =
+      payload && typeof payload === "object" && "error" in payload
+        ? String((payload as { error: unknown }).error)
+        : "Rate limit reached. Try again shortly.";
+    return new Error(message);
+  }
+  if (payload && typeof payload === "object" && "error" in payload) {
+    const value = (payload as { error: unknown }).error;
+    if (typeof value === "string") return new Error(value);
+  }
+  return new Error(fallback);
+}
 
 const fieldClass =
   "min-h-11 w-full rounded-lg border border-line bg-[#0b0e14] px-3 py-2 text-base text-text outline-none focus-visible:border-ping/50 focus-visible:ring-2 focus-visible:ring-ping/40 md:text-sm";
@@ -68,9 +84,7 @@ export function ScanApp() {
         }),
       });
       const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload.error ? JSON.stringify(payload.error) : "Scan failed");
-      }
+      if (!response.ok) throw apiError(payload, "Scan failed", response.status);
       setSnapshot(payload as Snapshot);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Scan failed");
@@ -95,7 +109,7 @@ export function ScanApp() {
         body: JSON.stringify({ action, snapshot }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error("Heal failed");
+      if (!response.ok) throw apiError(payload, "Heal failed", response.status);
       if (payload.snapshot) setSnapshot(payload.snapshot as Snapshot);
       setHealNote(
         `${payload.status} · ${payload.collector_id}` +
@@ -192,6 +206,7 @@ export function ScanApp() {
               ? "Studio collectors ready. Scan may take up to a minute."
               : "Studio ids missing for this domain — Discover + Gemini, then fixture."}
           </p>
+          {status?.demoFixture !== false ? (
           <button
             type="button"
             disabled={loading}
@@ -200,6 +215,7 @@ export function ScanApp() {
           >
             Load demo snapshot
           </button>
+          ) : null}
         </div>
         {loading ? (
           <p className="text-sm text-ping" role="status">

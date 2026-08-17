@@ -69,5 +69,5 @@
     "broken_fields": []
   },
   "mode": "live",
-  "notes": ["Example structured output for judges. Live scans use the same Snapshot schema."]
+  "notes": ["Canonical snapshot shape. Live scans use the same schema."]
 }

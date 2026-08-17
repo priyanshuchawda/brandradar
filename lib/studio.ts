@@ -39,6 +39,10 @@ export async function runStudioCli(
   action: "run" | "heal" | "approve",
   args: string[],
 ): Promise<{ ok: boolean; output: string }> {
+  const collectorId = args[0];
+  if (!collectorId || !isStudioCollectorId(collectorId)) {
+    return { ok: false, output: "Invalid collector id" };
+  }
   const script = path.join(process.cwd(), "scripts", "studio.sh");
   return new Promise((resolve) => {
     const child = spawn(script, [action, ...args], {
