@@ -2,21 +2,33 @@ import type { Domain, Item, Snapshot } from "./schema";
 import { attachInsights, hostnameLabel } from "./plays";
 
 function item(
-  partial: Omit<Item, "currency" | "collector_id" | "run_id"> &
-    Partial<Pick<Item, "currency" | "collector_id" | "run_id">>,
+  partial: Omit<Item, "currency" | "collector_id" | "run_id" | "list_price"> &
+    Partial<Pick<Item, "currency" | "collector_id" | "run_id" | "list_price">>,
 ): Item {
   return {
     currency: "INR",
-    list_price: null,
     collector_id: "c_mock_brandradar",
     run_id: "j_mock_preview",
     ...partial,
+    list_price: partial.list_price ?? null,
   };
 }
 
+type CatalogItem = Omit<
+  Item,
+  "source" | "currency" | "collector_id" | "run_id" | "list_price"
+> &
+  Partial<Pick<Item, "list_price">>;
+
 const catalogs: Record<
   Domain,
-  { brandItems: Omit<Item, "source" | "currency" | "collector_id" | "run_id">[]; rivals: Array<{ name: string; items: Omit<Item, "source" | "rival_name" | "currency" | "collector_id" | "run_id">[] }> }
+  {
+    brandItems: CatalogItem[];
+    rivals: Array<{
+      name: string;
+      items: CatalogItem[];
+    }>;
+  }
 > = {
   ecommerce: {
     brandItems: [

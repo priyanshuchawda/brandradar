@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 # Commit and push. Do not call `git push` from the terminal — run this script.
-# Does not touch git config. Uses the existing local identity (priyanshuchawda).
+# Author is set per commit below (does not touch global git config).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+
+export GIT_AUTHOR_NAME="Priyanshu Chawda"
+export GIT_AUTHOR_EMAIL="hellopriyanshu4@gmail.com"
+export GIT_COMMITTER_NAME="Priyanshu Chawda"
+export GIT_COMMITTER_EMAIL="hellopriyanshu4@gmail.com"
 
 if [[ $# -lt 1 ]]; then
   echo "usage: scripts/push.sh \"Commit message\"" >&2

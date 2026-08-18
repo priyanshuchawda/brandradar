@@ -39,7 +39,10 @@ async function scrapeLive(request: ScanRequest): Promise<Snapshot> {
         asString(row.url) ||
         nestedUrl(row),
     )
-    .filter((url): url is string => Boolean(url) && !url.endsWith("/shop"))
+    .filter(
+      (url): url is string =>
+        typeof url === "string" && url.length > 0 && !url.endsWith("/shop"),
+    )
     .filter((url, index, all) => all.indexOf(url) === index)
     .slice(0, 8);
 
