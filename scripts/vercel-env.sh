@@ -38,7 +38,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   value="${line#*=}"
   key="$(echo "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
   value="$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-  [[ -z "$key" ]] && continue
+  [[ -z "$key" || -z "$value" ]] && continue
 
   echo "sync $key"
   add_var "$key" "$value" production

@@ -54,3 +54,4 @@ data/raw/
 data/cache/
 data/snapshots/*.json
 !data/snapshots/.gitkeep
+.env*
