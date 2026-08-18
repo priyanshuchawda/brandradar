@@ -24,5 +24,5 @@ if [[ "$VISIBILITY" == "true" ]]; then
   exit 0
 fi
 
-gh api -X PATCH "/repos/$REPO" -f private=true --jq '"now private: " + .full_name'
+"$ROOT/scripts/github-keep-meta.sh" "$REMOTE"
 echo "visibility: private"

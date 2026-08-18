@@ -9,6 +9,7 @@ REPO="${1:-priyanshuchawda/brandradar}"
 
 "$ROOT/scripts/repo-private.sh"
 "$ROOT/scripts/vercel-link.sh" "$REPO"
+"$ROOT/scripts/github-keep-meta.sh"
 
 if [[ -f .env.local ]]; then
   "$ROOT/scripts/vercel-env.sh" .env.local
