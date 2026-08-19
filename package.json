@@ -1,6 +1,8 @@
 {
   "name": "brandradar",
   "version": "0.1.0",
+  "description": "Open-source competitive intelligence from public storefronts — rival discovery, catalog extraction, and growth plays with self-healing scrapers.",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "dev": "next dev",

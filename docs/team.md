@@ -1,8 +1,8 @@
-# Contributors
+# Maintainers
 
-- Priyanshu Chawda — product, pipeline, repository
-- Aditya Gayal — domain scope
-- Vaishnavi Repal — domain-agnostic CI framing
-- Sneha Barge — vertical prototype (ecommerce, edtech, food)
+- **Priyanshu Chawda** — product, pipeline, repository
+- **Aditya Gayal** — domain scope and vertical coverage
+- **Vaishnavi Repal** — competitive intelligence product framing
+- **Sneha Barge** — ecommerce, edtech, and food prototypes
 
-BrandRadar is built as a category-agnostic competitive intelligence product. Ecommerce, edtech, and food are the first three verticals because they have public listing + detail pages. Fintech is deferred: too much sits behind login.
+BrandRadar is category-agnostic competitive intelligence. Ecommerce, edtech, and food are the first verticals because they expose public listing and product-detail pages. Fintech is deferred until public catalog pages are reliably available without login.

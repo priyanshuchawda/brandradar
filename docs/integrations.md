@@ -21,14 +21,14 @@ Gemini uses one Google AI Studio key. **Flash** (`GEMINI_MODEL_FLASH`, default `
 | Feature | Why not |
 | --- | --- |
 | SDK `scrape.amazon` / LinkedIn / Instagram | Library scrapers. Using them as the product extractor is ineligible |
-| SDK `scrapeUrl` / Web Unlocker as the catalog source | Unstructured HTML. Studio collectors are the scored extractors |
+| SDK `scrapeUrl` / Web Unlocker as the catalog source | Unstructured HTML. Studio collectors are the primary extractors |
 | SDK `search.google` | Overlaps Discover. Costs a SERP zone we do not need |
 | Browser API / Playwright CDP | Extra zones, extra moving parts, same public pages |
 | Gemini Google Search grounding | Overlaps Bright Data Discover |
 | Gemini Computer Use, video, speech, Deep Research | Wrong job, slow, not a founder brief |
 | Batch / Flex / Priority inference | One scan at a time is enough |
 
-Studio is the scored extractor. Gemini Flash URL context only runs on the Discover fallback path, and only on public HTTPS URLs the user or Discover already supplied. Gemini never invents prices.
+Studio is the primary extractor. Gemini Flash URL context only runs on the Discover fallback path, and only on public HTTPS URLs the user or Discover already supplied. Gemini never invents prices.
 
 ## Extraction QA
 

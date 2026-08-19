@@ -2,9 +2,9 @@
 
 Open-source competitive intelligence for brands that do not have a research team.
 
-Paste a public storefront. BrandRadar finds rivals, collects catalog / price / rating / availability from public pages, and returns **three growth plays** with evidence. When a competitor redesigns a page, the same scraper repairs in place so the arena does not go blank.
+Paste a public storefront. BrandRadar finds rivals, collects catalog / price / rating / availability from public pages, and returns **three growth plays** with evidence. When a competitor redesigns a page, the same scraper repairs in place so collection keeps working.
 
-See the market. Heal the scraper. Grow the brand.
+**License:** [MIT](LICENSE) · **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## What it does
 
@@ -25,6 +25,8 @@ Details: [docs/stack.md](docs/stack.md) · [docs/architecture.md](docs/architect
 ## Run locally
 
 ```bash
+git clone https://github.com/priyanshuchawda/brandradar.git
+cd brandradar
 cp .env.example .env.local
 npm install
 npm run dev
@@ -70,16 +72,18 @@ Create collectors with `scripts/studio-create.sh`. Run / heal / approve with `sc
 
 Scan body: `{ brandUrl, brandName?, domain, rivalUrls?, forceMock? }`. `domain` is `ecommerce` \| `edtech` \| `food`. At most five rival URLs. Example output: [examples/sample-output.json](examples/sample-output.json).
 
-## Repository
+## Documentation
 
 | Path | Contents |
 | --- | --- |
 | [docs/product.md](docs/product.md) | Problem, users, plays |
 | [docs/architecture.md](docs/architecture.md) | Pipeline and components |
 | [docs/collectors.md](docs/collectors.md) | Scraper Studio collectors and self-heal |
-| [docs/integrations.md](docs/integrations.md) | Bright Data SDK + Gemini: what we use and skip |
+| [docs/integrations.md](docs/integrations.md) | Bright Data SDK + Gemini |
 | [docs/security.md](docs/security.md) | Auth, rate limits, URL policy, headers |
 | [docs/stack.md](docs/stack.md) | Language and vendor choices |
+| [docs/brightdata.md](docs/brightdata.md) | Scraper Studio CLI and API notes |
+| [docs/team.md](docs/team.md) | Maintainers |
 | [examples/](examples/) | Canonical snapshot + a live PDP row |
 | [scripts/](scripts/) | Git helpers and Studio CLI wrappers |
 
@@ -89,4 +93,4 @@ Public HTTPS pages only. No logins, paywalls, personal data, or private networks
 
 ## Maintainers
 
-Priyanshu Chawda, Aditya Gayal, Vaishnavi Repal, Sneha Barge.
+See [docs/team.md](docs/team.md).

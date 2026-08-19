@@ -33,7 +33,7 @@ Not a crawler. Do not pass a homepage and ask for everything.
 | **Search** | Keyword (+ optional country) | Discovery or Discovery+PDP shape | 1 + M |
 | **Sitemap** | Domain or `sitemap.xml` | Per-page detail for sitemap URLs | 1 + N |
 
-BrandRadar default: **Discovery** (or Search) to find items, then **PDP** on a shortlist. Avoid Discovery+PDP on huge categories during the week.
+BrandRadar default: **Discovery** (or Search) to find items, then **PDP** on a shortlist. Avoid Discovery+PDP on huge categories in production — cap PDP runs instead.
 
 ## CLI — install nothing, run via npx
 
@@ -139,7 +139,7 @@ Timing (typical PDP): 1–10 URLs in 30–90s; 11–100 in 2–5 min.
 
 Errors: 401 token; 404 bad collector; 422 input schema mismatch; 5xx retry; `[]` empty or expired (batch kept 16 days, realtime 7).
 
-AI Flow API (`/dca/collectors/{c_*}/automate_template`, `refactor_template`) **creates/heals**. Collection API **gets data**. The app should use Collection API. Create/heal via CLI during the week.
+AI Flow API (`/dca/collectors/{c_*}/automate_template`, `refactor_template`) **creates/heals**. Collection API **gets data**. The app uses Collection API at runtime. Create and heal collectors via CLI or Studio UI.
 
 ### Minimal Node trigger
 
@@ -202,10 +202,10 @@ Vague prompts fail. Name the field and the symptom. After accept: preview, then 
 
 ## Other CLI (optional)
 
-`brightdata scrape`, `search`, `discover`, `pipelines`, `browser` wrap the wider platform. Useful for exploration. **The scored artifact is still a Scraper Studio collector.**
+`brightdata scrape`, `search`, `discover`, `pipelines`, `browser` wrap the wider Bright Data platform. Useful for exploration. BrandRadar’s catalog path stays on custom Scraper Studio collectors.
 
-## Legal / ToS for us
+## Data policy
 
 - Public pages only.
 - Treat missing fields as `null`; do not invent values.
-- Prefer regional / niche sites the library does not already cover — that is where Scraper Studio is meant to shine, and it photographs better for "Best Use of Bright Data".
+- Prefer regional and niche sites where custom collectors add the most value over generic marketplace feeds.

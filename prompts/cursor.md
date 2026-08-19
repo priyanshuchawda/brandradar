@@ -34,7 +34,7 @@ PDP fill-in:
 
 Expected: Collector ID like `c_mpohus372o5tmid1jk`, then a JSON array. Save the id in `.env`.
 
-## 2. Full build → heal → approve → re-run (demo this)
+## 2. Full build → heal → approve → re-run
 
 Official example uses Bright Data's shop. Use it first to prove the loop, then repeat on our seed brand.
 
@@ -85,7 +85,7 @@ Verify:
 Run the scraper on https://shopalto.xyz/product/aurora-wireless-headphones again and confirm all five fields now come back: name, price, description, image_url and rating.
 ```
 
-## 4. BrandRadar-specific heal (use in the product demo)
+## 4. BrandRadar-specific heal
 
 ```
 The price and rating fields on collector $COLLECTOR_ID now return null after the category page redesign. Heal in place. Keep the same Collector ID. Anchor on <CATEGORY_OR_PDP_URL>. Show the approval envelope. Do not create a new scraper.
