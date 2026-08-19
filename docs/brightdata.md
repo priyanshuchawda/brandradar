@@ -1,12 +1,11 @@
-# How to use Bright Data Scraper Studio (hackathon notes)
+# Bright Data Scraper Studio guide
 
-Official docs, compressed for the team. Prefer the live docs if something conflicts.
+Official docs, compressed for contributors. Prefer the live Bright Data documentation if something conflicts.
 
-Signup: [brdta.com/wemakedevs](https://brdta.com/wemakedevs)
-Credits: Bright Data profile → billing → code `wemakedevs` (lowercase)
-Free tier: 5,000 credits/month on top of the $50 promo
+Signup: [brightdata.com](https://brightdata.com)
+Free tier: 5,000 credits/month on new accounts.
 
-**Do not commit API tokens.** Use `.env`.
+**Do not commit API tokens.** Use `.env.local`.
 
 ## What Scraper Studio is
 
@@ -20,7 +19,7 @@ Build a **custom** scraper for any public site. Proxies, retries, unblocking are
 
 A published scraper is a **Collector** with id `c_...`. That id is the API handle. Self-heal **keeps the same id**.
 
-Hackathon rule: we must create our own collector. Pre-built library scrapers (Amazon, LinkedIn, …) alone do not qualify. Those sites are also a poor fit because the skills repo routes them to data-feeds.
+BrandRadar uses **custom** Scraper Studio collectors, not pre-built marketplace library scrapers (Amazon, LinkedIn, and similar). Those feeds target a different competitive set than regional D2C, edtech, or food brands.
 
 ## Five scraper types (pick one shape)
 
@@ -201,7 +200,7 @@ Vague prompts fail. Name the field and the symptom. After accept: preview, then 
 | `bdata scraper heal` | `POST .../refactor_template` |
 | `bdata scraper approve` | `POST .../resume_automation_job` |
 
-## Other CLI (not the hackathon requirement)
+## Other CLI (optional)
 
 `brightdata scrape`, `search`, `discover`, `pipelines`, `browser` wrap the wider platform. Useful for exploration. **The scored artifact is still a Scraper Studio collector.**
 

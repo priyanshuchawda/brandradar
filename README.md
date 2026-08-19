@@ -1,6 +1,6 @@
 # BrandRadar
 
-Competitive intelligence for brands that do not have a research team.
+Open-source competitive intelligence for brands that do not have a research team.
 
 Paste a public storefront. BrandRadar finds rivals, collects catalog / price / rating / availability from public pages, and returns **three growth plays** with evidence. When a competitor redesigns a page, the same scraper repairs in place so the arena does not go blank.
 
@@ -87,6 +87,6 @@ Scan body: `{ brandUrl, brandName?, domain, rivalUrls?, forceMock? }`. `domain` 
 
 Public HTTPS pages only. No logins, paywalls, personal data, or private networks. Marketplace library scrapers (Amazon, LinkedIn, and similar) are not the product extractor.
 
-## Contributors
+## Maintainers
 
 Priyanshu Chawda, Aditya Gayal, Vaishnavi Repal, Sneha Barge.
