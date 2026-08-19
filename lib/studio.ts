@@ -1,5 +1,4 @@
 import { spawn } from "node:child_process";
-import path from "node:path";
 import { collectorIdFor } from "./brightdata";
 import type { Snapshot } from "./schema";
 
@@ -35,6 +34,51 @@ function redact(text: string): string {
     .slice(0, 4000);
 }
 
+function studioEnv(): NodeJS.ProcessEnv {
+  const token =
+    process.env.BRIGHTDATA_API_KEY?.trim() ||
+    process.env.BRIGHT_DATA_API_TOKEN?.trim();
+  return {
+    ...process.env,
+    ...(token ? { BRIGHTDATA_API_KEY: token } : {}),
+  };
+}
+
+function bdataArgs(
+  action: "run" | "heal" | "approve",
+  args: string[],
+): string[] {
+  const [collectorId, url, prompt] = args;
+  if (action === "run") {
+    return ["-p", "@brightdata/cli", "bdata", "scraper", "run", collectorId, url, "--pretty"];
+  }
+  if (action === "heal") {
+    return [
+      "-p",
+      "@brightdata/cli",
+      "bdata",
+      "scraper",
+      "heal",
+      collectorId,
+      prompt ?? "",
+      "--url",
+      url,
+      "--pretty",
+    ];
+  }
+  return [
+    "-p",
+    "@brightdata/cli",
+    "bdata",
+    "scraper",
+    "approve",
+    collectorId,
+    "--url",
+    url,
+    "--pretty",
+  ];
+}
+
 export async function runStudioCli(
   action: "run" | "heal" | "approve",
   args: string[],
@@ -43,11 +87,10 @@ export async function runStudioCli(
   if (!collectorId || !isStudioCollectorId(collectorId)) {
     return { ok: false, output: "Invalid collector id" };
   }
-  const script = path.join(process.cwd(), "scripts", "studio.sh");
   return new Promise((resolve) => {
-    const child = spawn(script, [action, ...args], {
+    const child = spawn("npx", bdataArgs(action, args), {
       cwd: process.cwd(),
-      env: process.env,
+      env: studioEnv(),
       timeout: STUDIO_TIMEOUT_MS,
     });
     let output = "";

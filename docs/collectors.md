@@ -23,10 +23,11 @@ Ids live in `.env.local`, never in git.
 | `COLLECTOR_ECOMMERCE_DISCOVERY` | Discovery | `https://mamaearth.in/shop` |
 
 ```bash
-scripts/studio-create.sh <name> <https-url> "<fields to extract>"
-scripts/studio.sh run <collector_id> <https-url>
-scripts/studio.sh heal <collector_id> <https-url> "<what broke>"
-scripts/studio.sh approve <collector_id> <https-url>
+npx -p @brightdata/cli bdata login
+npx -p @brightdata/cli bdata scraper create "<https-url>" "<fields to extract>"
+npx -p @brightdata/cli bdata scraper run <collector_id> <https-url> --pretty
+npx -p @brightdata/cli bdata scraper heal <collector_id> "<what broke>" --url <https-url> --pretty
+npx -p @brightdata/cli bdata scraper approve <collector_id> --url <https-url> --pretty
 ```
 
 ## Verified extraction
@@ -39,7 +40,7 @@ Collection API in `lib/brightdata.ts` follows the official [Node starter](https:
 
 ## Self-heal
 
-Collector id does not change. The health panel calls the same `scripts/studio.sh` path when the snapshot (or env) has a real `c_*`. Mock snapshots stay in-process.
+Collector id does not change. The health panel invokes the Bright Data CLI through `lib/studio.ts` when the snapshot (or env) has a real `c_*`. Mock snapshots stay in-process.
 
 ## Models and codegen
 

@@ -48,12 +48,12 @@ If Studio is not configured or fails, Discover snippets + Gemini extraction run 
 Heal keeps the collector id stable:
 
 ```bash
-scripts/studio.sh heal "$COLLECTOR_ID" "<public-url>" "<what broke>"
-scripts/studio.sh approve "$COLLECTOR_ID" "<public-url>"
-scripts/studio.sh run "$COLLECTOR_ID" "<public-url>"
+npx -p @brightdata/cli bdata scraper heal "$COLLECTOR_ID" "<what broke>" --url "<public-url>" --pretty
+npx -p @brightdata/cli bdata scraper approve "$COLLECTOR_ID" --url "<public-url>" --pretty
+npx -p @brightdata/cli bdata scraper run "$COLLECTOR_ID" "<public-url>" --pretty
 ```
 
-The health panel is the same loop. Mock snapshots never shell out to Studio.
+The health panel runs the same commands via `lib/studio.ts`. Mock snapshots never shell out to Studio.
 
 ## Persistence
 

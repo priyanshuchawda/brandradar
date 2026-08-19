@@ -11,7 +11,7 @@ Gemini uses one Google AI Studio key. **Flash** (`GEMINI_MODEL_FLASH`, default `
 | Bright Data SDK | `client.scraperStudio.run(c_*, { input })` | Run custom collectors. Same `c_*` ids as the CLI |
 | Bright Data REST | `POST /dca/trigger` + poll `/dca/dataset` | Fallback if the SDK run fails |
 | Bright Data REST | `POST /discover/sync` (fast, 5 hits, no body, IN) | Rival homepages and listing snippets |
-| Bright Data CLI | `scripts/studio.sh` create / heal / approve | AI Flow. Heal keeps the same collector id |
+| Bright Data CLI | `bdata scraper create` / `heal` / `approve` | AI Flow. Heal keeps the same collector id |
 | Gemini 3.6 Flash | Structured JSON + URL context | Fallback catalog when Studio is down |
 | Gemini 3.6 Flash | Function calling | Heal prompt from QA flags (concatenated prices, duplicated names) |
 | Gemini 3.1 Flash-Lite | Structured JSON | Pick rivals from Discover hits, rewrite play copy |

@@ -60,7 +60,7 @@ Put secrets in `.env.local`. Never commit them.
 | `BRANDRADAR_API_KEY` | Optional bearer/API key on mutating routes |
 | `ALLOW_DEMO_FIXTURE` | `true`/`false`. Unset = allowed outside production |
 
-Create collectors with `scripts/studio-create.sh`. Run / heal / approve with `scripts/studio.sh`. See [docs/collectors.md](docs/collectors.md).
+Create and manage collectors with the Bright Data CLI. See [docs/collectors.md](docs/collectors.md).
 
 ## HTTP API
 
@@ -83,14 +83,8 @@ Scan body: `{ brandUrl, brandName?, domain, rivalUrls?, forceMock? }`. `domain` 
 | [docs/security.md](docs/security.md) | Auth, rate limits, URL policy, headers |
 | [docs/stack.md](docs/stack.md) | Language and vendor choices |
 | [docs/brightdata.md](docs/brightdata.md) | Scraper Studio CLI and API notes |
-| [docs/team.md](docs/team.md) | Maintainers |
 | [examples/](examples/) | Canonical snapshot + a live PDP row |
-| [scripts/](scripts/) | Git helpers and Studio CLI wrappers |
 
 ## Data policy
 
 Public HTTPS pages only. No logins, paywalls, personal data, or private networks. Marketplace library scrapers (Amazon, LinkedIn, and similar) are not the product extractor.
-
-## Maintainers
-
-See [docs/team.md](docs/team.md).

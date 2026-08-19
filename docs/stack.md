@@ -22,7 +22,7 @@ components/          Arena, plays, collector health
 | UI | Tailwind |
 | Discover | `POST /discover/sync`, fast, 5 results, no body, 6h cache |
 | Run | `@brightdata/sdk` Scraper Studio, REST fallback |
-| Create / heal | `scripts/studio-create.sh` / `scripts/studio.sh` |
+| Create / heal | Bright Data CLI (`bdata scraper …`) |
 | Validation | Zod (`examples/sample-output.json`) |
 | Insights | Deterministic rules; Flash-Lite copy; Flash heal prompts |
 | Node | 20+ |
