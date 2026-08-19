@@ -54,4 +54,6 @@ data/raw/
 data/cache/
 data/snapshots/*.json
 !data/snapshots/.gitkeep
-.env*
+
+# local ops scripts (push, deploy) — not shipped in the public repo
+/scripts/
