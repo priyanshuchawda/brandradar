@@ -10,5 +10,7 @@ describe("runIntelPull", () => {
     expect(parsed.rivals.length).toBeGreaterThanOrEqual(4);
     expect(parsed.mode).toBe("mock");
     expect(parsed.diff.length).toBe(parsed.rivals.length);
+    expect(parsed.plays.length).toBeGreaterThan(0);
+    expect(parsed.plays.length).toBeLessThanOrEqual(3);
   });
 });

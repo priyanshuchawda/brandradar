@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BrandRadar",
+  title: "BrandRadar — Monday Diff",
   description:
-    "Competitive intelligence that tells a brand what to do next. Self-healing scrapers. Growth plays.",
+    "Self-healing competitive intel: weekly rival update diffs and growth plays, with a catalog arena for D2C scans.",
 };
 
 export const viewport: Viewport = {
