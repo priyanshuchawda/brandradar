@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { HealLabApp } from "@/components/heal-lab-app";
 import { MondayDiffApp } from "@/components/monday-diff-app";
 import { ScanApp } from "@/components/scan-app";
 
-type Face = "monday" | "arena";
+type Face = "monday" | "heal" | "arena";
 
 export default function Home() {
   const [face, setFace] = useState<Face>("monday");
@@ -21,6 +22,11 @@ export default function Home() {
               label="Monday Diff"
             />
             <FaceButton
+              active={face === "heal"}
+              onClick={() => setFace("heal")}
+              label="Heal Lab"
+            />
+            <FaceButton
               active={face === "arena"}
               onClick={() => setFace("arena")}
               label="Catalog arena"
@@ -28,7 +34,13 @@ export default function Home() {
           </div>
         </div>
       </nav>
-      {face === "monday" ? <MondayDiffApp /> : <ScanApp />}
+      {face === "monday" ? (
+        <MondayDiffApp />
+      ) : face === "heal" ? (
+        <HealLabApp />
+      ) : (
+        <ScanApp />
+      )}
     </div>
   );
 }
