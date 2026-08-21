@@ -72,8 +72,12 @@ Create and manage collectors with the Bright Data CLI. See [docs/collectors.md](
 | `GET` | `/api/scan` | Status only. 60 req / min / IP |
 | `POST` | `/api/scan` | Live scan. 8 req / 15 min / IP. HTTPS public URLs only |
 | `POST` | `/api/heal` | Break / heal / approve. 20 req / 15 min / IP |
+| `GET` | `/api/intel` | Monday Diff cohort status |
+| `POST` | `/api/intel` | Cohort pull + week diff. Same scan rate limit |
 
 Scan body: `{ brandUrl, brandName?, domain, rivalUrls?, forceMock? }`. `domain` is `ecommerce` \| `edtech` \| `food`. At most five rival URLs. Example output: [examples/sample-output.json](examples/sample-output.json).
+
+Intel body: `{ forceMock?, persist? }`. Example: [examples/intel-snapshot.json](examples/intel-snapshot.json).
 
 ## Documentation
 

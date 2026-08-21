@@ -43,7 +43,18 @@ See `lib/intel-schema.ts`. Example snapshot: [`examples/intel-snapshot.json`](..
 
 ## Roadmap
 
-1. Rivals + schema (this doc) — done in issue #1
+1. Rivals + schema — issue #1
 2. Weekly snapshots + diff — issue #2
 3. Plays + arena UI — issue #3
 4. Discord `/intel` + Monday post — issue #4 (needs Discord bot token)
+
+## API
+
+```bash
+curl -s http://localhost:3000/api/intel
+curl -s -X POST http://localhost:3000/api/intel \
+  -H 'content-type: application/json' \
+  -d '{"forceMock":true,"persist":false}'
+```
+
+`POST /api/intel` runs the cohort pull, diffs against the previous saved week (if any), and optionally writes `data/intel/<YYYY-Www>/snapshot.json`.
