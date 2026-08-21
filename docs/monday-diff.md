@@ -1,6 +1,6 @@
 # Monday Diff
 
-Competitive intel pipeline: scrape **three to five** rivals’ public update pages every week, diff against last week, and deliver a Monday brief (Discord in Phase 4).
+Competitive intel pipeline: scrape **three to five** rivals’ public update pages every week, diff against last week, and deliver a Monday brief to Discord (`#monday-diff` embeds + `/intel`).
 
 This is BrandRadar’s cohort mode. We do **not** scrape YC or other directories. Rivals are seeded from a niche list; each `update_url` is that company’s own guides, blog, or changelog.
 
@@ -46,7 +46,7 @@ See `lib/intel-schema.ts`. Example snapshot: [`examples/intel-snapshot.json`](..
 1. Rivals + schema — issue #1
 2. Weekly snapshots + diff — issue #2
 3. Plays + arena UI — issue #3
-4. Discord delivery — issue #4 · setup in [discord.md](discord.md)
+4. Discord delivery — issues #4 / #9 · setup in [discord.md](discord.md)
 
 ## UI
 

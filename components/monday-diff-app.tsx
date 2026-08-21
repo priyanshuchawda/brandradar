@@ -100,8 +100,9 @@ export function MondayDiffApp() {
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-muted">
             Scrape each rival’s own guides or blog, diff against last week, and
-            get three plays. Post the same brief to Discord when a webhook or bot
-            token is configured.
+            get three plays. Post rich embeds to Discord{" "}
+            <code className="text-ping">#monday-diff</code> when a bot is
+            configured — or use slash <code className="text-ping">/intel</code>.
           </p>
         </div>
         <div className="font-mono text-[11px] text-muted">

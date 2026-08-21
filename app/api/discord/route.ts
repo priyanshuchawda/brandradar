@@ -8,7 +8,13 @@ import {
   readJsonBody,
   withRateHeaders,
 } from "@/lib/guard";
-import { discordConfigured, discordMode, postIntelToDiscord } from "@/lib/discord";
+import {
+  discordApplicationId,
+  discordConfigured,
+  discordGuildId,
+  discordMode,
+  postIntelToDiscord,
+} from "@/lib/discord";
 import { runIntelPull } from "@/lib/intel-pull";
 import { healLimiter } from "@/lib/rate-limit";
 import { z } from "zod";
@@ -24,9 +30,19 @@ export async function GET() {
   return NextResponse.json({
     configured: discordConfigured(),
     mode: discordMode(),
+    guild_id: discordGuildId() ?? null,
+    application_id: discordApplicationId() ?? null,
+    channel_id: process.env.DISCORD_CHANNEL_ID?.trim() || null,
+    public_key_set: Boolean(process.env.DISCORD_PUBLIC_KEY?.trim()),
+    slash_commands: ["/intel", "/rivals", "/help"],
+    endpoints: {
+      post_brief: "POST /api/discord",
+      setup_channel_and_commands: "POST /api/discord/setup",
+      interactions: "POST /api/discord/interactions",
+    },
     hint: discordConfigured()
-      ? "POST /api/discord with optional { forceMock, persist } to pull intel and post."
-      : "Set DISCORD_WEBHOOK_URL or DISCORD_BOT_TOKEN + DISCORD_CHANNEL_ID in .env.local",
+      ? "POST /api/discord to pull intel and post rich embeds. POST /api/discord/setup once to create #monday-diff and register slash commands."
+      : "Set DISCORD_WEBHOOK_URL, or DISCORD_BOT_TOKEN + DISCORD_CHANNEL_ID in .env.local",
   });
 }
 
@@ -79,6 +95,7 @@ export async function POST(request: Request) {
         messages: posted.messages,
         week: snapshot.week,
         plays: snapshot.plays.length,
+        embeds: true,
       }),
       quota,
     );
