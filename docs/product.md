@@ -54,6 +54,17 @@ Plays are not three copies of “match the price.” Each scan ranks signals and
 A SKU already on list-price cut is not told to “run a promo.” Review *volume* counts as trust, not only the star rating.
 
 
+## Monday Diff (cohort CI)
+
+A second product face for **competitive intel on public update pages** (official “changelog → Monday delivery” shape):
+
+1. Fixed cohort in `config/rivals.json` (e.g. points-travel startups).
+2. Scrape each rival’s own guides/blog/changelog — never a directory site.
+3. Diff week-over-week.
+4. Emit plays; deliver to Discord (bot) every Monday.
+
+Details: [monday-diff.md](monday-diff.md).
+
 ## Out of scope (for now)
 
 - User accounts, billing, multi-tenant tenancy

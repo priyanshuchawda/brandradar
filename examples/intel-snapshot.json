@@ -1,0 +1,85 @@
+{
+  "cohort": "points-travel",
+  "label": "Points & AI travel",
+  "week": "2026-W33",
+  "pulled_at": "2026-08-15T12:00:00Z",
+  "rivals": [
+    {
+      "rival_id": "roame",
+      "rival_name": "Roame",
+      "update_url": "https://roame.travel/guides",
+      "surface": "guides",
+      "entries": [
+        {
+          "title": "Roame Now Searches EVA Air Infinity MileageLands",
+          "url": "https://roame.travel/guides/roame-now-searches-eva-air-infinity-mileagelands",
+          "published_at": "2026-08-06",
+          "summary": "EVA Air awards are now searchable in Roame."
+        },
+        {
+          "title": "Current Point Transfer Bonuses for July 2026",
+          "url": "https://roame.travel/guides/points-transfer-bonuses",
+          "published_at": "2026-07-20",
+          "summary": "Active transfer bonuses with ratios and dates."
+        }
+      ],
+      "collector_id": "c_intel_updates",
+      "scraped_at": "2026-08-15T12:00:00Z"
+    },
+    {
+      "rival_id": "stardrift",
+      "rival_name": "Stardrift",
+      "update_url": "https://stardrift.ai/blog",
+      "surface": "blog",
+      "entries": [
+        {
+          "title": "Introducing Stardrift: An AI Travel Assistant That Actually Knows You",
+          "url": "https://stardrift.ai/blog/introducing-stardrift",
+          "published_at": "2025-12-04",
+          "summary": "Launch post for the AI travel assistant."
+        }
+      ],
+      "collector_id": "c_intel_updates",
+      "scraped_at": "2026-08-15T12:00:00Z"
+    },
+    {
+      "rival_id": "pointhound",
+      "rival_name": "Pointhound",
+      "update_url": "https://www.pointhound.com/blog",
+      "surface": "blog",
+      "entries": [
+        {
+          "title": "How to fly first class with points",
+          "url": "https://www.pointhound.com/blog/how-to-fly-first-class-with-points",
+          "published_at": null,
+          "summary": null
+        }
+      ],
+      "collector_id": "c_intel_updates",
+      "scraped_at": "2026-08-15T12:00:00Z"
+    },
+    {
+      "rival_id": "rove",
+      "rival_name": "Rove",
+      "update_url": "https://rove.travel/blog",
+      "surface": "blog",
+      "entries": [],
+      "collector_id": "c_intel_updates",
+      "scraped_at": "2026-08-15T12:00:00Z"
+    }
+  ],
+  "diff": [],
+  "plays": [],
+  "health": {
+    "null_rate": 0.05,
+    "last_heal": null,
+    "collector_ids": ["c_intel_updates"],
+    "broken_fields": [],
+    "qa_flags": [],
+    "heal_hint": null
+  },
+  "mode": "mock",
+  "notes": [
+    "Example Monday Diff snapshot for submit/docs. Live pulls replace entries via Scraper Studio."
+  ]
+}

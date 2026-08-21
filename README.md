@@ -2,7 +2,9 @@
 
 Open-source competitive intelligence for brands that do not have a research team.
 
-Paste a public storefront. BrandRadar finds rivals, collects catalog / price / rating / availability from public pages, and returns **three growth plays** with evidence. When a competitor redesigns a page, the same scraper repairs in place so collection keeps working.
+**Monday Diff** tracks a cohort of rivals’ public blogs, guides, and changelogs — weekly diffs and a Monday brief (Discord next). **Arena** still scans D2C / edtech / food catalogs with self-healing Scraper Studio collectors.
+
+Paste a public storefront, or follow a fixed rival cohort. When a page redesigns, the same scraper repairs in place so the brief does not go blank.
 
 **License:** [MIT](LICENSE) · **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)
 
@@ -52,7 +54,7 @@ Put secrets in `.env.local`. Never commit them.
 | Variable | Purpose |
 | --- | --- |
 | `BRIGHT_DATA_API_TOKEN` | Same account token as Scraper Studio / `@brightdata/sdk` |
-| `COLLECTOR_*_DISCOVERY` / `COLLECTOR_*_PDP` | Scraper Studio collector ids (`c_*`) |
+| `COLLECTOR_INTEL_UPDATES` | Monday Diff Studio collector for update index pages |
 | `USE_MOCK=false` | Prefer Studio collectors when ids exist |
 | `GEMINI_API_KEY` | Optional. Flash + Flash-Lite |
 | `GEMINI_MODEL` | Flash-Lite id (rival pick, play copy) |
@@ -76,6 +78,7 @@ Scan body: `{ brandUrl, brandName?, domain, rivalUrls?, forceMock? }`. `domain` 
 
 | Path | Contents |
 | --- | --- |
+| [docs/monday-diff.md](docs/monday-diff.md) | Cohort changelog/blog CI → Discord |
 | [docs/product.md](docs/product.md) | Problem, users, plays |
 | [docs/architecture.md](docs/architecture.md) | Pipeline and components |
 | [docs/collectors.md](docs/collectors.md) | Scraper Studio collectors and self-heal |
