@@ -54,6 +54,8 @@ https://brandradar-beta.vercel.app/api/discord/interactions
 
 Discord sends a PING; our route replies `{ type: 1 }` after signature verify.
 
+Local note: Ed25519 verify uses SPKI-wrapped keys (Node 20+/24 rejects `format: "raw"`). Slash *handlers* are covered by unit tests; Discord can only hit `/api/discord/interactions` over public HTTPS (tunnel or deploy) when you set the Interactions Endpoint URL.
+
 ## Slash commands
 
 | Command | Effect |
