@@ -1,0 +1,39 @@
+{
+  "cohort": "points-travel",
+  "label": "Points & AI travel",
+  "description": "Public update surfaces for a points-travel / AI travel cohort. Seeds only — we scrape each company's own site, never YC directories.",
+  "rivals": [
+    {
+      "id": "roame",
+      "name": "Roame",
+      "homepage": "https://roame.travel",
+      "update_url": "https://roame.travel/guides",
+      "surface": "guides",
+      "notes": "Product guides double as release notes (new airline/hotel coverage)."
+    },
+    {
+      "id": "stardrift",
+      "name": "Stardrift",
+      "homepage": "https://stardrift.ai",
+      "update_url": "https://stardrift.ai/blog",
+      "surface": "blog",
+      "notes": "Engineering and product blog."
+    },
+    {
+      "id": "pointhound",
+      "name": "Pointhound",
+      "homepage": "https://www.pointhound.com",
+      "update_url": "https://www.pointhound.com/blog",
+      "surface": "blog",
+      "notes": "Award-travel education and product posts."
+    },
+    {
+      "id": "rove",
+      "name": "Rove",
+      "homepage": "https://rove.travel",
+      "update_url": "https://rove.travel/blog",
+      "surface": "blog",
+      "notes": "Public blog listing; may be JS-rendered — Studio collector handles rendering."
+    }
+  ]
+}

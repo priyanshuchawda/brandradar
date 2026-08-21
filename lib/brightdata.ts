@@ -51,6 +51,19 @@ export function liveCollectorsReady(domain: Domain): boolean {
   );
 }
 
+/** Shared Discovery-style collector for Monday Diff update pages (blog/guides/changelog). */
+export function intelUpdatesCollectorId(): string | undefined {
+  return (
+    process.env.COLLECTOR_INTEL_UPDATES?.trim() ||
+    process.env.BRIGHT_DATA_COLLECTOR_ID?.trim() ||
+    undefined
+  );
+}
+
+export function intelCollectorsReady(): boolean {
+  return hasBrightDataToken() && Boolean(process.env.COLLECTOR_INTEL_UPDATES?.trim());
+}
+
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }

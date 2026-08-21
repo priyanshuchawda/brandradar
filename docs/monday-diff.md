@@ -1,0 +1,49 @@
+# Monday Diff
+
+Competitive intel pipeline: scrape **three to five** rivals’ public update pages every week, diff against last week, and deliver a Monday brief (Discord in Phase 4).
+
+This is BrandRadar’s cohort mode. We do **not** scrape YC or other directories. Rivals are seeded from a niche list; each `update_url` is that company’s own guides, blog, or changelog.
+
+## Cohort
+
+Config: [`config/rivals.json`](../config/rivals.json)
+
+| Rival | Update surface |
+| --- | --- |
+| Roame | `https://roame.travel/guides` |
+| Stardrift | `https://stardrift.ai/blog` |
+| Pointhound | `https://www.pointhound.com/blog` |
+| Rove | `https://rove.travel/blog` |
+
+## Studio collector
+
+Create one Discovery-style custom collector that extracts listing rows from an update index page:
+
+- `title`
+- `url` (absolute)
+- `published_at` (nullable)
+- `summary` (nullable)
+
+```bash
+npx -p @brightdata/cli bdata scraper create "https://roame.travel/guides" \
+  "Extract up to 15 public guide or post rows: title, absolute url, published date if shown, short summary. Listing page only."
+```
+
+Pin the id:
+
+```bash
+COLLECTOR_INTEL_UPDATES=c_...
+```
+
+Heal keeps the **same** id when a blog layout moves.
+
+## Schema
+
+See `lib/intel-schema.ts`. Example snapshot: [`examples/intel-snapshot.json`](../examples/intel-snapshot.json).
+
+## Roadmap
+
+1. Rivals + schema (this doc) — done in issue #1
+2. Weekly snapshots + diff — issue #2
+3. Plays + arena UI — issue #3
+4. Discord `/intel` + Monday post — issue #4 (needs Discord bot token)
