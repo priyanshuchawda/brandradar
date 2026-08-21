@@ -54,6 +54,7 @@ Put secrets in `.env.local`. Never commit them.
 | Variable | Purpose |
 | --- | --- |
 | `BRIGHT_DATA_API_TOKEN` | Same account token as Scraper Studio / `@brightdata/sdk` |
+| `COLLECTOR_*_DISCOVERY` / `COLLECTOR_*_PDP` | Arena catalog collectors (`c_*`) |
 | `COLLECTOR_INTEL_UPDATES` | Monday Diff Studio collector for update index pages |
 | `USE_MOCK=false` | Prefer Studio collectors when ids exist |
 | `GEMINI_API_KEY` | Optional. Flash + Flash-Lite |
