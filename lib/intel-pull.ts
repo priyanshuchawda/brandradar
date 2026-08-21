@@ -14,6 +14,7 @@ import {
   type UpdateEntry,
 } from "./intel-schema";
 import { attachDiff, loadPreviousIntelSnapshot, saveIntelSnapshot } from "./intel-store";
+import { playsFromIntelDiff } from "./intel-plays";
 import { isoWeekKey, loadCohortConfig } from "./rivals";
 
 function mapStudioRow(row: Record<string, unknown>, fallbackOrigin: string): UpdateEntry | null {
@@ -197,6 +198,10 @@ export async function runIntelPull(input?: {
 
   const previous = await loadPreviousIntelSnapshot(week);
   snapshot = attachDiff(snapshot, previous);
+  snapshot = {
+    ...snapshot,
+    plays: playsFromIntelDiff(snapshot),
+  };
 
   if (persist) {
     const file = await saveIntelSnapshot(snapshot);
