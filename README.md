@@ -74,8 +74,10 @@ Create and manage collectors with the Bright Data CLI. See [docs/collectors.md](
 | `GET` | `/api/scan` | Status only. 60 req / min / IP |
 | `POST` | `/api/scan` | Live scan. 8 req / 15 min / IP. HTTPS public URLs only |
 | `POST` | `/api/heal` | Break / heal / approve. 20 req / 15 min / IP |
-| `GET` | `/api/intel` | Monday Diff cohort status |
-| `POST` | `/api/intel` | Cohort pull + week diff. Same scan rate limit |
+| `GET` | `/api/intel` | Cohort status + week cache flag |
+| `POST` | `/api/intel` | Pull (cache by default; `refresh` for Studio) |
+| `POST` | `/api/intel/heal` | Heal same `COLLECTOR_INTEL_UPDATES` id |
+| `POST` | `/api/cron/monday-diff` | Monday schedule → Discord (`CRON_SECRET`) |
 | `GET` | `/api/discord` | Discord configured? |
 | `POST` | `/api/discord` | Pull intel + post embed brief |
 | `POST` | `/api/discord/setup` | Create `#monday-diff` + register slash cmds |
@@ -83,7 +85,7 @@ Create and manage collectors with the Bright Data CLI. See [docs/collectors.md](
 
 Scan body: `{ brandUrl, brandName?, domain, rivalUrls?, forceMock? }`. `domain` is `ecommerce` \| `edtech` \| `food`. At most five rival URLs. Example output: [examples/sample-output.json](examples/sample-output.json).
 
-Intel body: `{ forceMock?, persist? }`. Example: [examples/intel-snapshot.json](examples/intel-snapshot.json).
+Intel body: `{ forceMock?, persist?, refresh? }`. Example: [examples/intel-snapshot.json](examples/intel-snapshot.json).
 
 ## Documentation
 

@@ -24,6 +24,8 @@ export const maxDuration = 300;
 const BodySchema = z.object({
   forceMock: z.boolean().optional(),
   persist: z.boolean().optional(),
+  /** Default false — reuse week cache so Discord post does not re-scrape. */
+  refresh: z.boolean().optional(),
 });
 
 export async function GET() {
@@ -39,9 +41,10 @@ export async function GET() {
       post_brief: "POST /api/discord",
       setup_channel_and_commands: "POST /api/discord/setup",
       interactions: "POST /api/discord/interactions",
+      monday_cron: "POST /api/cron/monday-diff",
     },
     hint: discordConfigured()
-      ? "POST /api/discord to pull intel and post rich embeds. POST /api/discord/setup once to create #monday-diff and register slash commands."
+      ? "POST /api/discord posts embeds. Default refresh=false reuses the week snapshot (no Studio spend)."
       : "Set DISCORD_WEBHOOK_URL, or DISCORD_BOT_TOKEN + DISCORD_CHANNEL_ID in .env.local",
   });
 }
@@ -80,6 +83,7 @@ export async function POST(request: Request) {
     const snapshot = await runIntelPull({
       forceMock: parsed.data.forceMock,
       persist: parsed.data.persist,
+      refresh: parsed.data.refresh === true,
     });
     const posted = await postIntelToDiscord(snapshot);
     if (!posted.ok) {
@@ -96,6 +100,8 @@ export async function POST(request: Request) {
         week: snapshot.week,
         plays: snapshot.plays.length,
         embeds: true,
+        intel_mode: snapshot.mode,
+        cached: snapshot.notes.some((n) => n.includes("Week cache hit")),
       }),
       quota,
     );

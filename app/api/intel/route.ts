@@ -9,7 +9,8 @@ import {
   withRateHeaders,
 } from "@/lib/guard";
 import { runIntelPull } from "@/lib/intel-pull";
-import { loadCohortConfig } from "@/lib/rivals";
+import { loadCohortConfig, isoWeekKey } from "@/lib/rivals";
+import { loadIntelSnapshot } from "@/lib/intel-store";
 import { intelCollectorsReady, intelUpdatesCollectorId } from "@/lib/brightdata";
 import { scanLimiter, statusLimiter } from "@/lib/rate-limit";
 import { z } from "zod";
@@ -19,6 +20,8 @@ export const maxDuration = 300;
 const PullBodySchema = z.object({
   forceMock: z.boolean().optional(),
   persist: z.boolean().optional(),
+  /** Re-trigger Studio even if this ISO week is cached. Costs Bright Data credits. */
+  refresh: z.boolean().optional(),
 });
 
 export async function GET(request: Request) {
@@ -27,6 +30,8 @@ export async function GET(request: Request) {
   if (limitedResponse) return limitedResponse;
 
   const config = loadCohortConfig();
+  const week = isoWeekKey();
+  const cached = await loadIntelSnapshot(week);
   return withRateHeaders(
     NextResponse.json({
       cohort: config.cohort,
@@ -39,6 +44,10 @@ export async function GET(request: Request) {
       })),
       intelCollector: intelUpdatesCollectorId() ?? null,
       intelReady: intelCollectorsReady(),
+      week,
+      weekCached: Boolean(cached && cached.mode === "live"),
+      costHint:
+        "Default pull reuses this week's live snapshot. Pass refresh=true to spend Studio credits again.",
     }),
     quota,
   );
@@ -68,6 +77,7 @@ export async function POST(request: Request) {
     const snapshot = await runIntelPull({
       forceMock: parsed.data.forceMock,
       persist: parsed.data.persist,
+      refresh: parsed.data.refresh,
     });
     return withRateHeaders(NextResponse.json(snapshot), quota);
   } catch (error) {
