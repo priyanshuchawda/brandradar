@@ -73,7 +73,7 @@ Create and manage collectors with the Bright Data CLI. See [docs/collectors.md](
 | --- | --- | --- |
 | `GET` | `/api/scan` | Status only. 60 req / min / IP |
 | `POST` | `/api/scan` | Live scan. 8 req / 15 min / IP. HTTPS public URLs only |
-| `POST` | `/api/heal` | Break / heal / approve. 20 req / 15 min / IP |
+| `GET`/`POST` | `/api/heal-lab` | Controlled self-heal demo (fixtures by default) |
 | `GET` | `/api/intel` | Cohort status + week cache flag |
 | `POST` | `/api/intel` | Pull (cache by default; `refresh` for Studio) |
 | `POST` | `/api/intel/heal` | Heal same `COLLECTOR_INTEL_UPDATES` id |
@@ -91,6 +91,7 @@ Intel body: `{ forceMock?, persist?, refresh? }`. Example: [examples/intel-snaps
 
 | Path | Contents |
 | --- | --- |
+| [docs/heal-lab.md](docs/heal-lab.md) | Own-site self-heal demo (before → after → heal) |
 | [docs/monday-diff.md](docs/monday-diff.md) | Cohort changelog/blog CI → Discord |
 | [docs/discord.md](docs/discord.md) | Channel, embeds, slash commands, Discord API map |
 | [docs/product.md](docs/product.md) | Problem, users, plays |
