@@ -2,7 +2,7 @@
 
 Open-source competitive intelligence for brands that do not have a research team.
 
-**Monday Diff** tracks a cohort of rivals’ public blogs, guides, and changelogs — weekly diffs and a Monday brief (Discord next). **Arena** still scans D2C / edtech / food catalogs with self-healing Scraper Studio collectors.
+**Monday Diff** tracks a cohort of rivals’ public blogs, guides, and changelogs — weekly diffs and a Discord brief (`#monday-diff`, rich embeds, `/intel`). **Arena** still scans D2C / edtech / food catalogs with self-healing Scraper Studio collectors.
 
 Paste a public storefront, or follow a fixed rival cohort. When a page redesigns, the same scraper repairs in place so the brief does not go blank.
 
@@ -77,7 +77,9 @@ Create and manage collectors with the Bright Data CLI. See [docs/collectors.md](
 | `GET` | `/api/intel` | Monday Diff cohort status |
 | `POST` | `/api/intel` | Cohort pull + week diff. Same scan rate limit |
 | `GET` | `/api/discord` | Discord configured? |
-| `POST` | `/api/discord` | Pull intel + post brief to Discord |
+| `POST` | `/api/discord` | Pull intel + post embed brief |
+| `POST` | `/api/discord/setup` | Create `#monday-diff` + register slash cmds |
+| `POST` | `/api/discord/interactions` | Discord Interactions (slash / PING) |
 
 Scan body: `{ brandUrl, brandName?, domain, rivalUrls?, forceMock? }`. `domain` is `ecommerce` \| `edtech` \| `food`. At most five rival URLs. Example output: [examples/sample-output.json](examples/sample-output.json).
 
@@ -88,7 +90,7 @@ Intel body: `{ forceMock?, persist? }`. Example: [examples/intel-snapshot.json](
 | Path | Contents |
 | --- | --- |
 | [docs/monday-diff.md](docs/monday-diff.md) | Cohort changelog/blog CI → Discord |
-| [docs/discord.md](docs/discord.md) | Webhook / bot setup for Monday posts |
+| [docs/discord.md](docs/discord.md) | Channel, embeds, slash commands, Discord API map |
 | [docs/product.md](docs/product.md) | Problem, users, plays |
 | [docs/architecture.md](docs/architecture.md) | Pipeline and components |
 | [docs/collectors.md](docs/collectors.md) | Scraper Studio collectors and self-heal |

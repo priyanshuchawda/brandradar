@@ -1,5 +1,9 @@
-import { formatIntelDiscordMessage } from "./intel-plays";
+import { createChannel, manageGuildChannel, postEmbedBrief } from "./discord-api";
+import { buildIntelEmbeds } from "./discord-embeds";
 import type { IntelSnapshot } from "./intel-schema";
+
+export { chunkDiscordContent } from "./discord-format";
+export { buildIntelEmbeds, buildRivalsEmbed, buildHelpEmbed } from "./discord-embeds";
 
 export function discordConfigured(): boolean {
   return Boolean(
@@ -20,22 +24,16 @@ export function discordMode(): "webhook" | "bot" | null {
   return null;
 }
 
-/** Discord hard limit is 2000; leave room for formatting. */
-export function chunkDiscordContent(content: string, max = 1900): string[] {
-  if (content.length <= max) return [content];
-  const chunks: string[] = [];
-  let rest = content;
-  while (rest.length > 0) {
-    if (rest.length <= max) {
-      chunks.push(rest);
-      break;
-    }
-    let cut = rest.lastIndexOf("\n", max);
-    if (cut < max * 0.5) cut = max;
-    chunks.push(rest.slice(0, cut));
-    rest = rest.slice(cut).replace(/^\n+/, "");
-  }
-  return chunks;
+export function discordGuildId(): string | undefined {
+  return process.env.DISCORD_GUILD_ID?.trim() || undefined;
+}
+
+export function discordApplicationId(): string | undefined {
+  return (
+    process.env.DISCORD_APPLICATION_ID?.trim() ||
+    process.env.DISCORD_CLIENT_ID?.trim() ||
+    undefined
+  );
 }
 
 export async function postIntelToDiscord(
@@ -50,54 +48,72 @@ export async function postIntelToDiscord(
     };
   }
 
-  const body = formatIntelDiscordMessage(snapshot);
-  const chunks = chunkDiscordContent(body);
+  const embeds = buildIntelEmbeds(snapshot);
+  // Discord allows max 10 embeds per message; we send one message with up to 10.
+  const payload = {
+    content: `📅 **Monday Diff** · \`${snapshot.week}\` · ${snapshot.label}`,
+    embeds: embeds.slice(0, 10),
+  };
 
   try {
     if (mode === "webhook") {
       const webhook = process.env.DISCORD_WEBHOOK_URL!.trim();
-      for (const content of chunks) {
-        const response = await fetch(webhook, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content }),
-        });
-        if (!response.ok) {
-          return {
-            ok: false,
-            error: `Webhook ${response.status}: ${(await response.text()).slice(0, 200)}`,
-          };
-        }
-      }
-      return { ok: true, mode, messages: chunks.length };
-    }
-
-    const token = process.env.DISCORD_BOT_TOKEN!.trim();
-    const channelId = process.env.DISCORD_CHANNEL_ID!.trim();
-    for (const content of chunks) {
-      const response = await fetch(
-        `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bot ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ content }),
-        },
-      );
+      const response = await fetch(webhook, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       if (!response.ok) {
         return {
           ok: false,
-          error: `Bot API ${response.status}: ${(await response.text()).slice(0, 200)}`,
+          error: `Webhook ${response.status}: ${(await response.text()).slice(0, 200)}`,
         };
       }
+      return { ok: true, mode, messages: 1 };
     }
-    return { ok: true, mode, messages: chunks.length };
+
+    const result = await postEmbedBrief(
+      process.env.DISCORD_CHANNEL_ID!.trim(),
+      payload,
+    );
+    if (!result.ok) return { ok: false, error: result.error };
+    return { ok: true, mode, messages: 1 };
   } catch (error) {
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Discord post failed",
     };
   }
+}
+
+export async function ensureMondayDiffChannel(guildId: string): Promise<
+  | { ok: true; channelId: string; created: boolean; name: string }
+  | { ok: false; error: string }
+> {
+  const token = process.env.DISCORD_BOT_TOKEN?.trim();
+  if (!token) return { ok: false, error: "DISCORD_BOT_TOKEN is not set" };
+
+  const listed = await manageGuildChannel(guildId, "monday-diff");
+  if (listed.ok && listed.channelId) {
+    return {
+      ok: true,
+      channelId: listed.channelId,
+      created: false,
+      name: listed.name ?? "monday-diff",
+    };
+  }
+
+  const created = await createChannel(guildId, {
+    name: "monday-diff",
+    topic:
+      "BrandRadar Monday Diff — weekly rival update briefs (guides/blogs/changelogs). Use /intel",
+    type: 0,
+  });
+  if (!created.ok) return created;
+  return {
+    ok: true,
+    channelId: created.channelId,
+    created: true,
+    name: "monday-diff",
+  };
 }

@@ -1,50 +1,85 @@
-# Discord delivery (Monday Diff)
+# Discord + Monday Diff
 
-Post the Monday Diff brief into a Discord channel. Prefer a **channel webhook** for demos; use a **bot token** when you want the BrandRadar app identity.
+BrandRadar posts **rich embeds** into Discord and supports guild slash commands. Official docs: [Intro](https://docs.discord.com/developers/intro) · [API Reference](https://docs.discord.com/developers/reference) · [Application Commands](https://docs.discord.com/developers/interactions/application-commands) · [Receiving Interactions](https://docs.discord.com/developers/interactions/receiving-and-responding)
 
-Official intro: [Discord Developer Platform](https://docs.discord.com/developers/intro)
+## What we use (on purpose)
 
-## Option A — Webhook (fastest)
+| Discord feature | BrandRadar use |
+| --- | --- |
+| Bot token + REST | Create `#monday-diff`, post embed briefs |
+| Message embeds | Cohort summary, per-rival diffs, plays |
+| Guild slash commands | `/intel`, `/rivals`, `/help` |
+| Interactions HTTP | Verify Ed25519 signatures → run intel pull |
+| Channel topic | Points people at `/intel` |
 
-1. Discord channel → Edit channel → Integrations → Webhooks → New Webhook  
-2. Copy the URL into `.env.local`:
+## What we skip (for now)
 
-```bash
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
-```
+| Feature | Why not yet |
+| --- | --- |
+| Gateway websocket / discord.js long-running client | Next.js is HTTP; Interactions URL is enough |
+| Moderation / tickets / welcome | Wrong product |
+| Message Content Intent | Slash commands don’t need it |
+| Components (buttons) v1 | Embeds + slash first; buttons can deep-link later |
 
-3. Post a brief:
-
-```bash
-curl -s -X POST http://localhost:3000/api/discord \
-  -H 'content-type: application/json' \
-  -d '{"forceMock":true}'
-```
-
-## Option B — Bot token + channel
-
-1. [Discord Developer Portal](https://discord.com/developers/applications) → New Application  
-2. Bot → Add Bot → Reset Token → copy token  
-3. OAuth2 → URL Generator → scopes: `bot` → permissions: `Send Messages`, `View Channel`  
-4. Invite the bot to your server  
-5. Enable Developer Mode in Discord → copy channel ID  
+## Env
 
 ```bash
-DISCORD_BOT_TOKEN=...
-DISCORD_CHANNEL_ID=...
+DISCORD_BOT_TOKEN=
+DISCORD_GUILD_ID=                 # server id
+DISCORD_APPLICATION_ID=           # same as Client ID from the portal
+DISCORD_CLIENT_ID=                # alias accepted
+DISCORD_CHANNEL_ID=               # set to #monday-diff after setup
+DISCORD_PUBLIC_KEY=               # General Information → Public Key (for slash interactions)
+# Optional fallback:
+# DISCORD_WEBHOOK_URL=
 ```
 
-## API
+## One-time setup
+
+1. Bot invited with scopes **`bot`** + **`applications.commands`**, permission **Send Messages** (+ Manage Channels if you want the app to create `#monday-diff`).
+2. Put token + guild + application id in `.env.local`.
+3. Run setup (creates channel + registers commands):
+
+```bash
+curl -s -X POST http://localhost:3000/api/discord/setup
+```
+
+4. Copy returned `channel_id` into `DISCORD_CHANNEL_ID`.
+5. Developer Portal → General Information → **Public Key** → `DISCORD_PUBLIC_KEY`.
+6. Interactions Endpoint URL (must be public HTTPS):
+
+```text
+https://brandradar-beta.vercel.app/api/discord/interactions
+```
+
+Discord sends a PING; our route replies `{ type: 1 }` after signature verify.
+
+## Slash commands
+
+| Command | Effect |
+| --- | --- |
+| `/intel mode:example` | Fixture week → embed brief in the channel |
+| `/intel mode:live` | Studio pull when `COLLECTOR_INTEL_UPDATES` is set |
+| `/rivals` | Cohort list + update URLs |
+| `/help` | Product help + web app link |
+
+Guild commands appear in a minute or two after `PUT …/commands`.
+
+## HTTP API (app)
 
 | Method | Path | Role |
 | --- | --- | --- |
-| `GET` | `/api/discord` | Configured? webhook vs bot |
-| `POST` | `/api/discord` | Run intel pull + post message(s) |
-
-Body: `{ forceMock?, persist? }` — same as `/api/intel`.
-
-Slash command `/intel` can call the same formatter later; webhook/bot post is enough for Monday delivery and demos.
+| `GET` | `/api/discord` | Config status |
+| `POST` | `/api/discord` | Pull intel + post embeds |
+| `POST` | `/api/discord/setup` | Create `#monday-diff` + register slash commands |
+| `POST` | `/api/discord/interactions` | Discord → us (slash / PING) |
 
 ## Security
 
-Never commit tokens. Mask them in demo videos. Optional `BRANDRADAR_API_KEY` still guards mutating routes when set.
+- Never commit tokens or the public key is fine to commit? **Public key is public** — still keep tokens in `.env.local` only.
+- Interactions reject bad Ed25519 signatures with `401`.
+- Optional `BRANDRADAR_API_KEY` still guards mutating app routes.
+
+## Rotate a leaked bot token
+
+Developer Portal → Bot → Reset Token → update `.env.local` → redeploy.
