@@ -10,6 +10,9 @@ type IntelStatus = {
   rivals: Array<{ id: string; name: string; update_url: string; surface: string }>;
   intelCollector: string | null;
   intelReady: boolean;
+  week?: string;
+  weekCached?: boolean;
+  costHint?: string;
 };
 
 function apiError(payload: unknown, fallback: string, status: number): Error {
@@ -46,7 +49,7 @@ export function MondayDiffApp() {
       .catch(() => setDiscordReady(false));
   }, []);
 
-  async function pull(forceMock: boolean) {
+  async function pull(opts: { forceMock: boolean; refresh?: boolean }) {
     setLoading(true);
     setError(null);
     setDiscordNote(null);
@@ -54,11 +57,20 @@ export function MondayDiffApp() {
       const response = await fetch("/api/intel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ forceMock, persist: !forceMock }),
+        body: JSON.stringify({
+          forceMock: opts.forceMock,
+          persist: !opts.forceMock,
+          refresh: opts.refresh === true,
+        }),
       });
       const payload = await response.json();
       if (!response.ok) throw apiError(payload, "Intel pull failed", response.status);
       setSnapshot(payload as IntelSnapshot);
+      // refresh status cache badge
+      fetch("/api/intel")
+        .then((res) => res.json())
+        .then(setStatus)
+        .catch(() => undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Intel pull failed");
     } finally {
@@ -66,7 +78,7 @@ export function MondayDiffApp() {
     }
   }
 
-  async function postDiscord(forceMock: boolean) {
+  async function postDiscord(opts: { forceMock: boolean; refresh?: boolean }) {
     setLoading(true);
     setError(null);
     setDiscordNote(null);
@@ -74,15 +86,41 @@ export function MondayDiffApp() {
       const response = await fetch("/api/discord", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ forceMock, persist: false }),
+        body: JSON.stringify({
+          forceMock: opts.forceMock,
+          persist: false,
+          refresh: opts.refresh === true,
+        }),
       });
       const payload = await response.json();
       if (!response.ok) throw apiError(payload, "Discord post failed", response.status);
       setDiscordNote(
-        `Posted to Discord (${payload.mode}) · ${payload.messages} message(s) · week ${payload.week}`,
+        `Posted (${payload.mode}) · week ${payload.week} · ${payload.cached ? "cached" : payload.intel_mode} · ${payload.plays} plays`,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Discord post failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function healIntel() {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/intel/heal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "heal",
+          snapshot: snapshot ?? undefined,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw apiError(payload, "Heal failed", response.status);
+      setDiscordNote(payload.note ?? `Heal on ${payload.collector_id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Heal failed");
     } finally {
       setLoading(false);
     }
@@ -107,7 +145,10 @@ export function MondayDiffApp() {
         </div>
         <div className="font-mono text-[11px] text-muted">
           {status?.intelReady ? (
-            <span className="text-ping">● studio ready</span>
+            <span className="text-ping">
+              ● studio ready
+              {status.weekCached ? " · week cached" : ""}
+            </span>
           ) : (
             <span>○ fixture / set COLLECTOR_INTEL_UPDATES</span>
           )}
@@ -118,15 +159,25 @@ export function MondayDiffApp() {
         <button
           type="button"
           disabled={loading}
-          onClick={() => pull(false)}
+          onClick={() => pull({ forceMock: false })}
           className="min-h-11 rounded-lg bg-ping px-4 text-sm font-medium text-[#04140c] disabled:opacity-50"
+          title="Uses this week's snapshot when available (no Studio spend)"
         >
           {loading ? "Pulling…" : "Pull cohort"}
         </button>
         <button
           type="button"
+          disabled={loading || !status?.intelReady}
+          onClick={() => pull({ forceMock: false, refresh: true })}
+          className="min-h-11 rounded-lg border border-ping/40 px-4 text-sm text-ping disabled:opacity-40"
+          title="Re-trigger Studio — spends Bright Data credits"
+        >
+          Refresh Studio
+        </button>
+        <button
+          type="button"
           disabled={loading}
-          onClick={() => pull(true)}
+          onClick={() => pull({ forceMock: true })}
           className="min-h-11 rounded-lg border border-line px-4 text-sm text-muted disabled:opacity-50"
         >
           Load example week
@@ -134,17 +185,33 @@ export function MondayDiffApp() {
         <button
           type="button"
           disabled={loading || !discordReady}
-          onClick={() => postDiscord(true)}
+          onClick={() => postDiscord({ forceMock: false })}
           className="min-h-11 rounded-lg border border-blue/40 px-4 text-sm text-blue disabled:opacity-40"
-          title={
-            discordReady
-              ? "Pull example week and post to Discord"
-              : "Set DISCORD_WEBHOOK_URL or bot token in .env.local"
-          }
+          title="Post from week cache / last pull — does not re-scrape by default"
         >
-          Post example to Discord
+          Post to Discord
+        </button>
+        <button
+          type="button"
+          disabled={loading || !discordReady}
+          onClick={() => postDiscord({ forceMock: true })}
+          className="min-h-11 rounded-lg border border-line px-4 text-sm text-muted disabled:opacity-40"
+        >
+          Post example
+        </button>
+        <button
+          type="button"
+          disabled={loading || !status?.intelReady}
+          onClick={() => healIntel()}
+          className="min-h-11 rounded-lg border border-alert/40 px-4 text-sm text-alert disabled:opacity-40"
+          title="bdata scraper heal on the same COLLECTOR_INTEL_UPDATES id"
+        >
+          Heal collector
         </button>
       </div>
+      {status?.costHint ? (
+        <p className="font-mono text-[11px] text-muted">{status.costHint}</p>
+      ) : null}
       {discordNote ? (
         <p className="font-mono text-xs text-ping">{discordNote}</p>
       ) : null}

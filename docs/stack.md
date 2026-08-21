@@ -31,12 +31,14 @@ components/          Arena, plays, collector health
 
 | Call | When | Cap |
 | --- | --- | --- |
-| Discover | Rival URLs empty | Fast mode, 5 hits, cache 6h |
-| Studio `scraperStudio.run` | Collector ids set and `USE_MOCK=false` | ≤8 PDPs |
+| Discover | Rival URLs empty (arena) | Fast mode, 5 hits, cache 6h |
+| Studio intel Discovery | Monday Diff live pull / refresh | ≤5 listing URLs; **week snapshot cache** skips re-run |
+| Studio `scraperStudio.run` (arena) | Collector ids set and `USE_MOCK=false` | ≤8 PDPs |
 | Studio `/dca/trigger` | SDK run failed | Same collectors |
-| Gemini Flash-Lite | Rival pick + play copy | JSON mime, thinking minimal |
-| Gemini Flash | Fallback extract (URL context) + heal prompt | ≤5 public URLs; function calling |
+| Gemini Flash-Lite | Arena rival pick + play copy | JSON mime; **not** on Monday Diff hot path |
+| Gemini Flash | Fallback extract + heal prompts | ≤5 public URLs; heal only when requested |
 | Library scrapers | Never as the product extractor | — |
+| Discord post | After intel | Reuses week cache by default |
 
 ## Not in this codebase
 

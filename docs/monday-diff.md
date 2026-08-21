@@ -1,8 +1,8 @@
 # Monday Diff
 
-Competitive intel pipeline: scrape **three to five** rivals’ public update pages every week, diff against last week, and deliver a Monday brief to Discord (`#monday-diff` embeds + `/intel`).
+Competitive intel pipeline: scrape **three to five** rivals’ **own** public update pages every week, diff against last week, and deliver a Monday brief to Discord (`#monday-diff`).
 
-This is BrandRadar’s cohort mode. We do **not** scrape YC or other directories. Rivals are seeded from a niche list; each `update_url` is that company’s own guides, blog, or changelog.
+We do **not** scrape YC.com or directories. Rivals are a seed list of competitor *companies*; each `update_url` is that company’s guides, blog, or changelog.
 
 ## Cohort
 
@@ -17,43 +17,33 @@ Config: [`config/rivals.json`](../config/rivals.json)
 
 ## Studio collector
 
-Create one Discovery-style custom collector that extracts listing rows from an update index page:
-
-- `title`
-- `url` (absolute)
-- `published_at` (nullable)
-- `summary` (nullable)
+One Discovery-style custom collector (listing rows only — not Discovery+PDP):
 
 ```bash
 npx -p @brightdata/cli bdata scraper create "https://roame.travel/guides" \
-  "Extract up to 15 public guide or post rows: title, absolute url, published date if shown, short summary. Listing page only."
+  "Extract up to 15 public guide or post rows: title, absolute url, published date if shown, short summary. Listing page only." \
+  --name brandradar-intel-updates --pretty
 ```
 
-Pin the id:
+Pin in `.env.local` only:
 
 ```bash
 COLLECTOR_INTEL_UPDATES=c_...
+USE_MOCK=false
 ```
 
-Heal keeps the **same** id when a blog layout moves.
+Heal keeps the **same** id: `POST /api/intel/heal` or `bdata scraper heal`.
 
-## Schema
+## Cost controls
 
-See `lib/intel-schema.ts`. Example snapshot: [`examples/intel-snapshot.json`](../examples/intel-snapshot.json).
-
-## Roadmap
-
-1. Rivals + schema — issue #1
-2. Weekly snapshots + diff — issue #2
-3. Plays + arena UI — issue #3
-4. Discord delivery — issues #4 / #9 · setup in [discord.md](discord.md)
-
-## UI
-
-Home ships two faces:
-
-- **Monday Diff** (default) — cohort pull, week diff, plays, Discord message preview + post button
-- **Catalog arena** — existing D2C / edtech / food scan + heal loop
+| Action | Studio spend |
+| --- | --- |
+| Pull cohort (default) | **None** if this ISO week already has a live snapshot |
+| Refresh Studio (`refresh: true`) | 4 listing URLs max |
+| Post to Discord (default) | Reuses week cache — no re-scrape |
+| Load / post example | Fixture only |
+| Monday cron | One pull; retries hit cache |
+| Gemini on intel path | **Off** — plays are deterministic rules |
 
 ## API
 
@@ -61,14 +51,33 @@ Home ships two faces:
 curl -s http://localhost:3000/api/intel
 curl -s -X POST http://localhost:3000/api/intel \
   -H 'content-type: application/json' \
-  -d '{"forceMock":true,"persist":false}'
+  -d '{"forceMock":false,"refresh":false}'
 
-curl -s http://localhost:3000/api/discord
+# Spend credits only when you mean it:
+curl -s -X POST http://localhost:3000/api/intel \
+  -H 'content-type: application/json' \
+  -d '{"forceMock":false,"refresh":true}'
+
 curl -s -X POST http://localhost:3000/api/discord \
   -H 'content-type: application/json' \
-  -d '{"forceMock":true}'
+  -d '{"forceMock":false}'
+
+curl -s -X POST http://localhost:3000/api/intel/heal \
+  -H 'content-type: application/json' \
+  -d '{"action":"heal"}'
+
+# Cron (set CRON_SECRET)
+curl -s -X POST "http://localhost:3000/api/cron/monday-diff" \
+  -H "Authorization: Bearer $CRON_SECRET"
 ```
 
-`POST /api/intel` runs the cohort pull, diffs against the previous saved week (if any), and optionally writes `data/intel/<YYYY-Www>/snapshot.json`.
+Vercel schedule: Monday 13:00 UTC (`vercel.json`).
 
-`POST /api/discord` runs the same pull and posts the brief via webhook or bot token.
+## UI
+
+- **Pull cohort** — week cache first
+- **Refresh Studio** — live `c_*` run
+- **Post to Discord** — from cache
+- **Heal collector** — same `COLLECTOR_INTEL_UPDATES` id
+
+Catalog arena remains a second tab for D2C heal demos.
