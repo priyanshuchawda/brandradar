@@ -46,7 +46,14 @@ See `lib/intel-schema.ts`. Example snapshot: [`examples/intel-snapshot.json`](..
 1. Rivals + schema — issue #1
 2. Weekly snapshots + diff — issue #2
 3. Plays + arena UI — issue #3
-4. Discord `/intel` + Monday post — issue #4 (needs Discord bot token)
+4. Discord delivery — issue #4 · setup in [discord.md](discord.md)
+
+## UI
+
+Home ships two faces:
+
+- **Monday Diff** (default) — cohort pull, week diff, plays, Discord message preview + post button
+- **Catalog arena** — existing D2C / edtech / food scan + heal loop
 
 ## API
 
@@ -55,6 +62,13 @@ curl -s http://localhost:3000/api/intel
 curl -s -X POST http://localhost:3000/api/intel \
   -H 'content-type: application/json' \
   -d '{"forceMock":true,"persist":false}'
+
+curl -s http://localhost:3000/api/discord
+curl -s -X POST http://localhost:3000/api/discord \
+  -H 'content-type: application/json' \
+  -d '{"forceMock":true}'
 ```
 
 `POST /api/intel` runs the cohort pull, diffs against the previous saved week (if any), and optionally writes `data/intel/<YYYY-Www>/snapshot.json`.
+
+`POST /api/discord` runs the same pull and posts the brief via webhook or bot token.

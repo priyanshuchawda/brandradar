@@ -56,6 +56,8 @@ Put secrets in `.env.local`. Never commit them.
 | `BRIGHT_DATA_API_TOKEN` | Same account token as Scraper Studio / `@brightdata/sdk` |
 | `COLLECTOR_*_DISCOVERY` / `COLLECTOR_*_PDP` | Arena catalog collectors (`c_*`) |
 | `COLLECTOR_INTEL_UPDATES` | Monday Diff Studio collector for update index pages |
+| `DISCORD_WEBHOOK_URL` | Optional. Channel webhook for Monday Diff posts |
+| `DISCORD_BOT_TOKEN` / `DISCORD_CHANNEL_ID` | Optional. Bot post instead of webhook |
 | `USE_MOCK=false` | Prefer Studio collectors when ids exist |
 | `GEMINI_API_KEY` | Optional. Flash + Flash-Lite |
 | `GEMINI_MODEL` | Flash-Lite id (rival pick, play copy) |
@@ -74,6 +76,8 @@ Create and manage collectors with the Bright Data CLI. See [docs/collectors.md](
 | `POST` | `/api/heal` | Break / heal / approve. 20 req / 15 min / IP |
 | `GET` | `/api/intel` | Monday Diff cohort status |
 | `POST` | `/api/intel` | Cohort pull + week diff. Same scan rate limit |
+| `GET` | `/api/discord` | Discord configured? |
+| `POST` | `/api/discord` | Pull intel + post brief to Discord |
 
 Scan body: `{ brandUrl, brandName?, domain, rivalUrls?, forceMock? }`. `domain` is `ecommerce` \| `edtech` \| `food`. At most five rival URLs. Example output: [examples/sample-output.json](examples/sample-output.json).
 
@@ -84,6 +88,7 @@ Intel body: `{ forceMock?, persist? }`. Example: [examples/intel-snapshot.json](
 | Path | Contents |
 | --- | --- |
 | [docs/monday-diff.md](docs/monday-diff.md) | Cohort changelog/blog CI → Discord |
+| [docs/discord.md](docs/discord.md) | Webhook / bot setup for Monday posts |
 | [docs/product.md](docs/product.md) | Problem, users, plays |
 | [docs/architecture.md](docs/architecture.md) | Pipeline and components |
 | [docs/collectors.md](docs/collectors.md) | Scraper Studio collectors and self-heal |

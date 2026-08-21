@@ -32,17 +32,24 @@ export function MondayDiffApp() {
   const [snapshot, setSnapshot] = useState<IntelSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [discordNote, setDiscordNote] = useState<string | null>(null);
+  const [discordReady, setDiscordReady] = useState(false);
 
   useEffect(() => {
     fetch("/api/intel")
       .then((res) => res.json())
       .then(setStatus)
       .catch(() => setStatus(null));
+    fetch("/api/discord")
+      .then((res) => res.json())
+      .then((payload) => setDiscordReady(Boolean(payload?.configured)))
+      .catch(() => setDiscordReady(false));
   }, []);
 
   async function pull(forceMock: boolean) {
     setLoading(true);
     setError(null);
+    setDiscordNote(null);
     try {
       const response = await fetch("/api/intel", {
         method: "POST",
@@ -54,6 +61,28 @@ export function MondayDiffApp() {
       setSnapshot(payload as IntelSnapshot);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Intel pull failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function postDiscord(forceMock: boolean) {
+    setLoading(true);
+    setError(null);
+    setDiscordNote(null);
+    try {
+      const response = await fetch("/api/discord", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ forceMock, persist: false }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw apiError(payload, "Discord post failed", response.status);
+      setDiscordNote(
+        `Posted to Discord (${payload.mode}) · ${payload.messages} message(s) · week ${payload.week}`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Discord post failed");
     } finally {
       setLoading(false);
     }
@@ -71,7 +100,8 @@ export function MondayDiffApp() {
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-muted">
             Scrape each rival’s own guides or blog, diff against last week, and
-            get three plays. Discord delivery comes next — same brief text.
+            get three plays. Post the same brief to Discord when a webhook or bot
+            token is configured.
           </p>
         </div>
         <div className="font-mono text-[11px] text-muted">
@@ -100,7 +130,23 @@ export function MondayDiffApp() {
         >
           Load example week
         </button>
+        <button
+          type="button"
+          disabled={loading || !discordReady}
+          onClick={() => postDiscord(true)}
+          className="min-h-11 rounded-lg border border-blue/40 px-4 text-sm text-blue disabled:opacity-40"
+          title={
+            discordReady
+              ? "Pull example week and post to Discord"
+              : "Set DISCORD_WEBHOOK_URL or bot token in .env.local"
+          }
+        >
+          Post example to Discord
+        </button>
       </div>
+      {discordNote ? (
+        <p className="font-mono text-xs text-ping">{discordNote}</p>
+      ) : null}
 
       {status ? (
         <ul className="grid gap-2 sm:grid-cols-2">
