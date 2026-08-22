@@ -2,16 +2,22 @@ import { NextResponse } from "next/server";
 import { postIntelToDiscord, discordConfigured, discordMode } from "@/lib/discord";
 import { postEmbedBrief } from "@/lib/discord-api";
 import { runIntelPull } from "@/lib/intel-pull";
-import { healStatusDiscordEmbed } from "@/lib/heal-engine";
+import {
+  healStatusDiscordEmbed,
+  runIntelAutoHeal,
+  snapshotLooksBroken,
+  intelCollectorId,
+  intelHealAnchor,
+} from "@/lib/intel-auto-heal";
 import { intelUpdatesCollectorId } from "@/lib/brightdata";
+import { healRuntimeBudget } from "@/lib/runtime-env";
 
 export const maxDuration = 300;
 
 /**
  * Monday Diff cron: one Studio pull (or week cache) → Discord.
  * Auth: Authorization: Bearer $CRON_SECRET or ?secret=
- * Retries are cheap: same ISO week hits cache unless refresh=1.
- * If extract QA fails, posts a broken alert (no auto-heal — cost gate).
+ * ?auto_heal=1 — opt-in one heal loop when QA fails (cost gate; Vercel-safe budget).
  */
 export async function GET(request: Request) {
   return runCron(request);
@@ -42,6 +48,7 @@ async function runCron(request: Request) {
   }
 
   const refresh = url.searchParams.get("refresh") === "1";
+  const autoHeal = url.searchParams.get("auto_heal") === "1";
   const snapshot = await runIntelPull({
     forceMock: false,
     persist: true,
@@ -56,10 +63,9 @@ async function runCron(request: Request) {
   }
 
   let healthAlert: unknown = null;
-  const broken =
-    snapshot.health.qa_flags.length > 0 ||
-    snapshot.health.broken_fields.length > 0 ||
-    Boolean(snapshot.health.heal_hint);
+  let autoHealResult: unknown = null;
+  const broken = snapshotLooksBroken(snapshot);
+
   if (broken && discordMode() === "bot" && process.env.DISCORD_CHANNEL_ID) {
     const collectorId =
       snapshot.health.collector_ids[0] || intelUpdatesCollectorId() || "unknown";
@@ -86,6 +92,35 @@ async function runCron(request: Request) {
       : { error: alert.error };
   }
 
+  if (autoHeal && broken && snapshot.mode === "live") {
+    try {
+      const loop = await runIntelAutoHeal({ snapshot, useGemini: false });
+      autoHealResult = {
+        status: loop.healed ? "recovered" : "still_broken",
+        heal_attempts: loop.heal_attempts,
+        after_count: loop.after?.valid_count ?? 0,
+        stages: loop.stages,
+        budget: healRuntimeBudget(),
+      };
+      if (discordMode() === "bot" && process.env.DISCORD_CHANNEL_ID) {
+        const payload = healStatusDiscordEmbed({
+          stage: loop.healed ? "recovered" : "still_broken",
+          collectorId: intelCollectorId(snapshot),
+          url: intelHealAnchor(snapshot),
+          beforeCount: loop.before.valid_count,
+          afterCount: loop.after?.valid_count ?? 0,
+          stages: loop.stages,
+        });
+        await postEmbedBrief(process.env.DISCORD_CHANNEL_ID.trim(), payload);
+      }
+    } catch (error) {
+      autoHealResult = {
+        status: "error",
+        error: error instanceof Error ? error.message : "auto_heal failed",
+      };
+    }
+  }
+
   return NextResponse.json({
     status: "ok",
     week: snapshot.week,
@@ -94,11 +129,14 @@ async function runCron(request: Request) {
     plays: snapshot.plays.length,
     cached: snapshot.notes.some((n) => n.includes("Week cache hit")),
     refresh,
+    auto_heal: autoHeal,
     health: {
       null_rate: snapshot.health.null_rate,
       qa_flags: snapshot.health.qa_flags,
       broken_fields: snapshot.health.broken_fields,
+      broken,
     },
     healthAlert,
+    autoHealResult,
   });
 }

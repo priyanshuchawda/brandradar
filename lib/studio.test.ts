@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { isStudioCollectorId, resolveStudioCollector } from "./studio";
+import {
+  extractJsonBlob,
+  healPreviewLooksHealthy,
+  isStudioCollectorId,
+  resolveStudioCollector,
+} from "./studio";
 import type { Snapshot } from "./schema";
 
 const base: Snapshot = {
@@ -45,5 +50,28 @@ describe("resolveStudioCollector", () => {
       health: { ...base.health, collector_ids: ["c_msxk3e171mgnnw2hkr"] },
     };
     expect(resolveStudioCollector(live)).toBe("c_msxk3e171mgnnw2hkr");
+  });
+});
+
+describe("extractJsonBlob", () => {
+  it("parses heal envelope with nested arrays", () => {
+    const raw = JSON.stringify({
+      status: "done",
+      preview_result: [{ posts: [{ title: "A", url: "https://x.com/a" }] }],
+    });
+    const blob = extractJsonBlob(`npm notice\n${raw}\n`);
+    expect(blob).toMatchObject({ status: "done" });
+  });
+});
+
+describe("healPreviewLooksHealthy", () => {
+  it("counts nested preview titles", () => {
+    const previewOk = JSON.stringify({
+      status: "done",
+      preview_result: [{ posts: [{ title: "A", url: "https://x.com/a" }] }],
+    });
+    const preview = healPreviewLooksHealthy(previewOk);
+    expect(preview.ok).toBe(true);
+    expect(preview.title_count).toBe(1);
   });
 });

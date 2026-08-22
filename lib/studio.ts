@@ -2,9 +2,20 @@ import { spawn } from "node:child_process";
 import { collectorIdFor } from "./brightdata";
 import type { Snapshot } from "./schema";
 
-/** Collection runs are usually quick; heal AI Flow needs CLI's full poll window. */
+import { healRuntimeBudget, type HealRuntimeBudget } from "./runtime-env";
+
+/** Collection runs are usually quick; heal AI Flow needs CLI poll window (capped on Vercel). */
 const STUDIO_RUN_TIMEOUT_MS = 180_000;
-const STUDIO_HEAL_TIMEOUT_MS = 620_000;
+
+export function studioHealTimeoutMs(overrideMs?: number): number {
+  if (overrideMs) return overrideMs;
+  return healRuntimeBudget().healTimeoutMs;
+}
+
+export function studioHealCliTimeoutSec(overrideSec?: number): number {
+  if (overrideSec) return overrideSec;
+  return healRuntimeBudget().healCliTimeoutSec;
+}
 
 export function isStudioCollectorId(id: string): boolean {
   return /^c_[a-z0-9]+$/i.test(id) && !id.toLowerCase().startsWith("c_mock");
@@ -52,6 +63,8 @@ export type StudioCliOptions = {
   /** Heal/approve: persist template after success (BD `auto_save`). Default true with autoApprove. */
   autoSave?: boolean;
   timeoutMs?: number;
+  /** Heal CLI poll cap in seconds (BD `--timeout`). */
+  healCliTimeoutSec?: number;
 };
 
 function bdataArgs(
@@ -64,6 +77,7 @@ function bdataArgs(
     return ["-p", "@brightdata/cli", "bdata", "scraper", "run", collectorId, url, "--pretty"];
   }
   if (action === "heal") {
+    const timeoutSec = options?.healCliTimeoutSec ?? studioHealCliTimeoutSec();
     const out = [
       "-p",
       "@brightdata/cli",
@@ -76,7 +90,7 @@ function bdataArgs(
       url,
       "--pretty",
       "--timeout",
-      "600",
+      String(timeoutSec),
     ];
     // BD Workflow 2: preview≠published unless we approve+save through to done.
     if (options?.autoApprove !== false) {
@@ -111,7 +125,7 @@ export async function runStudioCli(
   }
   const timeoutMs =
     options?.timeoutMs ??
-    (action === "heal" ? STUDIO_HEAL_TIMEOUT_MS : STUDIO_RUN_TIMEOUT_MS);
+    (action === "heal" ? studioHealTimeoutMs() : STUDIO_RUN_TIMEOUT_MS);
 
   return new Promise((resolve) => {
     const child = spawn("npx", bdataArgs(action, args, options), {
@@ -135,20 +149,31 @@ export async function runStudioCli(
   });
 }
 
-/** Pull the last JSON object/array from CLI pretty output (ignores npm notices). */
+/** Pull JSON object or array from CLI output (ignores npm notices). */
 export function extractJsonBlob(text: string): unknown | null {
-  const objStart = text.lastIndexOf("{");
-  const arrStart = text.lastIndexOf("[");
-  const start = Math.max(objStart, arrStart);
-  if (start < 0) return null;
-  const closer = text[start] === "[" ? "]" : "}";
-  const end = text.lastIndexOf(closer);
-  if (end <= start) return null;
-  try {
-    return JSON.parse(text.slice(start, end + 1));
-  } catch {
-    return null;
+  const objStart = text.indexOf("{");
+  if (objStart >= 0) {
+    const end = text.lastIndexOf("}");
+    if (end > objStart) {
+      try {
+        return JSON.parse(text.slice(objStart, end + 1));
+      } catch {
+        // fall through
+      }
+    }
   }
+  const arrStart = text.indexOf("[");
+  if (arrStart >= 0) {
+    const end = text.lastIndexOf("]");
+    if (end > arrStart) {
+      try {
+        return JSON.parse(text.slice(arrStart, end + 1));
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
 }
 
 /**

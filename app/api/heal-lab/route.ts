@@ -27,6 +27,7 @@ import {
   runHealAndVerify,
 } from "@/lib/heal-engine";
 import { assessListingExtract } from "@/lib/extract-qa";
+import { healRuntimeBudget } from "@/lib/runtime-env";
 import { healLimiter } from "@/lib/rate-limit";
 import { isStudioCollectorId, runStudioCli } from "@/lib/studio";
 
@@ -52,6 +53,7 @@ const BodySchema = z.object({
   /** Allow Gemini Flash to draft heal prompt (live only; off by default for cost). */
   useGemini: z.boolean().optional(),
   notifyDiscord: z.boolean().optional(),
+  maxHealAttempts: z.number().int().min(1).max(2).optional(),
 });
 
 export async function GET() {
@@ -176,6 +178,9 @@ export async function POST(request: Request) {
       mode: forceMock ? "fixture" : "live",
       userPrompt: parsed.data.prompt,
       useGemini: parsed.data.useGemini === true,
+      budget: parsed.data.maxHealAttempts
+        ? { maxHealAttempts: parsed.data.maxHealAttempts }
+        : undefined,
       rerun: async () => {
         if (forceMock) return fixtureExtract();
         const result = await runHealLabCollector(
@@ -209,8 +214,9 @@ export async function POST(request: Request) {
         count: loop.rows_after.length,
         discord,
         note: loop.healed
-          ? "Same Collector ID · QA verified after one heal+rerun."
+          ? "Same Collector ID · QA verified after heal+settle verify."
           : "Heal loop finished without a healthy extract — check stages/output.",
+        budget: healRuntimeBudget(),
       }),
       quota,
     );

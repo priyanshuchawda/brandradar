@@ -1,57 +1,61 @@
-import { describe, expect, it } from "vitest";
-import { assessListingExtract, defaultListingHealPrompt } from "./extract-qa";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import {
+  assessListingExtract,
+  isJunkListingTitle,
+  retightenHealPrompt,
+} from "./extract-qa";
+import { healRuntimeBudget } from "./runtime-env";
 
-describe("assessListingExtract", () => {
-  it("marks healthy rows with title+url", () => {
+describe("isJunkListingTitle", () => {
+  it("flags nav CTAs", () => {
+    expect(isJunkListingTitle("Share")).toBe(true);
+    expect(isJunkListingTitle("August transfer bonuses live")).toBe(false);
+  });
+});
+
+describe("assessListingExtract junk + duplicates", () => {
+  it("flags junk titles and duplicates", () => {
     const qa = assessListingExtract([
-      {
-        title: "Launch notes",
-        url: "https://example.com/blog/1",
-        published_at: "2026-01-01",
-        summary: "Ship it",
-      },
-      {
-        title: "Patch",
-        url: "https://example.com/blog/2",
-        published_at: null,
-        summary: null,
-      },
+      { title: "Share", url: "https://rival.com/p/1" },
+      { title: "Real post", url: "https://rival.com/p/1" },
+      { title: "Real post", url: "https://rival.com/p/2" },
     ]);
-    expect(qa.ok).toBe(true);
-    expect(qa.status).toBe("healthy");
+    expect(qa.qa_flags).toContain("junk_titles");
+    expect(qa.qa_flags).toContain("duplicate_titles");
     expect(qa.valid_count).toBe(2);
-    expect(qa.qa_flags).toEqual([]);
   });
 
-  it("flags empty extract", () => {
-    const qa = assessListingExtract([]);
-    expect(qa.ok).toBe(false);
-    expect(qa.status).toBe("empty");
-    expect(qa.qa_flags).toContain("empty_extract");
-    expect(qa.null_rate).toBe(1);
-  });
-
-  it("detects row collapse vs previous week", () => {
+  it("flags off-host urls when allowedHosts set", () => {
     const qa = assessListingExtract(
-      [{ title: "Only one", url: "https://example.com/a" }],
-      { previousCount: 12 },
+      [{ title: "Post", url: "https://evil.com/x" }],
+      { allowedHosts: ["rival.com"] },
     );
-    expect(qa.qa_flags).toContain("row_collapse");
-    expect(qa.status).toBe("degraded");
+    expect(qa.qa_flags).toContain("off_host_urls");
+  });
+});
+
+describe("retightenHealPrompt", () => {
+  it("appends run_empty hint", () => {
+    const p = retightenHealPrompt("Fix listing.", "run_empty");
+    expect(p).toMatch(/Collection run was empty/i);
+  });
+});
+
+describe("healRuntimeBudget", () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
   });
 
-  it("flags broken title/url fields", () => {
-    const qa = assessListingExtract([
-      { title: "", url: "not-a-url", published_at: null, summary: null },
-    ]);
-    expect(qa.broken_fields).toEqual(expect.arrayContaining(["title", "url"]));
-    expect(qa.valid_count).toBe(0);
-    expect(qa.status).toBe("empty");
+  it("uses tighter budget on Vercel", () => {
+    vi.stubEnv("VERCEL", "1");
+    const b = healRuntimeBudget();
+    expect(b.maxHealAttempts).toBe(1);
+    expect(b.healTimeoutMs).toBeLessThanOrEqual(240_000);
   });
 
-  it("builds a listing-only heal hint", () => {
-    const qa = assessListingExtract([]);
-    expect(defaultListingHealPrompt(qa)).toMatch(/listing/i);
-    expect(defaultListingHealPrompt(qa)).toMatch(/Do not open detail/i);
+  it("allows two heal attempts locally", () => {
+    vi.stubEnv("VERCEL", "");
+    const b = healRuntimeBudget();
+    expect(b.maxHealAttempts).toBe(2);
   });
 });

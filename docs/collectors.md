@@ -42,7 +42,7 @@ Collection API in `lib/brightdata.ts` follows the official [Node starter](https:
 
 Collector id does not change. The health panel invokes the Bright Data CLI through `lib/studio.ts` when the snapshot (or env) has a real `c_*`. Mock snapshots stay in-process.
 
-**Strong loop** (Monday Diff + Heal Lab): listing QA (`lib/extract-qa.ts`) → Studio heal with **`--auto-approve --auto-save`** (BD Workflow 2) → **preview gate** → **settle re-run** (retries with backoff; preview alone never counts as recovered). Gemini Flash may draft the heal prompt only when `useGemini:true`. Cron posts a Discord **broken** alert when QA flags fire; it does **not** auto-heal (credit gate). History: `data/heal-history/*.jsonl` (gitignored).
+**Strong loop** (Monday Diff + Heal Lab): listing QA (junk titles, duplicates, off-host URLs) → Studio heal with **`--auto-approve --auto-save`** → preview gate → settle re-run (up to **2** heal passes locally; **1** on Vercel within 300s). Cron: `?auto_heal=1` for opt-in repair. Gemini Flash only when `useGemini:true`.
 
 Pattern sources: [BD AI Flow Workflow 2](https://docs.brightdata.com/api-reference/scraper-studio-api/ai-flow/overview), [official self-healing demo](https://github.com/anil-bd/scraper-studio-self-healing-demo), industry detect→repair→verify (LLM on repair path only).
 

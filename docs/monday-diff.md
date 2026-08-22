@@ -44,8 +44,9 @@ Heal keeps the **same** id: `POST /api/intel/heal` (`heal` | `approve` | `auto_l
 | Load / post example | Fixture only |
 | Monday cron | One pull; retries hit cache |
 | Gemini on intel path | **Off** — plays are deterministic rules |
-| Strong heal `auto_loop` | One Studio heal + one refresh verify; Gemini only if `useGemini:true` |
+| Strong heal `auto_loop` | Up to 2 Studio heals locally; settle verify each pass |
 | Cron QA broken | Discord alert only — no auto-heal |
+| Cron `?auto_heal=1` | Opt-in one heal loop (Vercel-safe budget) |
 
 ## API
 

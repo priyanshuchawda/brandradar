@@ -1,11 +1,14 @@
 import {
   assessListingExtract,
   defaultListingHealPrompt,
+  retightenHealPrompt,
   type ExtractAssessment,
   type ListingRow,
+  type RetightenReason,
 } from "./extract-qa";
 import { appendHealHistory } from "./heal-history";
 import { geminiConfigured, proposeHealPrompt } from "./gemini";
+import { healRuntimeBudget, type HealRuntimeBudget } from "./runtime-env";
 import {
   healPreviewLooksHealthy,
   isStudioCollectorId,
@@ -29,6 +32,7 @@ export type HealLoopResult = {
   rows_after: ListingRow[];
   preview_title_count?: number;
   settle_attempts?: number;
+  heal_attempts?: number;
 };
 
 export async function resolveHealPrompt(input: {
@@ -70,7 +74,6 @@ function sleep(ms: number): Promise<void> {
 
 /**
  * Post-approve Collection runs often lag — BD + OSS demos settle-retry before failing.
- * Default: 4 attempts with backoff (0s, 8s, 16s, 32s).
  */
 export async function rerunUntilHealthy(
   rerun: () => Promise<ListingRow[]>,
@@ -99,10 +102,83 @@ export async function rerunUntilHealthy(
   return { rows, after, recovered, attempts };
 }
 
+type StudioHealPassResult = {
+  preview: ReturnType<typeof healPreviewLooksHealthy>;
+  healCliOk: boolean;
+  settled: Awaited<ReturnType<typeof rerunUntilHealthy>>;
+  outputSnippet: string;
+};
+
+async function runStudioHealPass(input: {
+  collector_id: string;
+  url: string;
+  prompt: string;
+  autoApprove: boolean;
+  budget: HealRuntimeBudget;
+  rerun: () => Promise<ListingRow[]>;
+  stages: string[];
+  output_snippets: string[];
+  attempt: number;
+}): Promise<StudioHealPassResult> {
+  input.stages.push(`studio_heal_autosave:try${input.attempt}`);
+  const healCli = await runStudioCli(
+    "heal",
+    [input.collector_id, input.url, input.prompt],
+    {
+      autoApprove: input.autoApprove,
+      autoSave: input.autoApprove,
+      timeoutMs: input.budget.healTimeoutMs,
+      healCliTimeoutSec: input.budget.healCliTimeoutSec,
+    },
+  );
+  input.output_snippets.push(healCli.output.slice(0, 700));
+
+  const preview = healPreviewLooksHealthy(healCli.output);
+  input.stages.push(
+    `preview:try${input.attempt}:${preview.ok ? "ok" : "weak"}:${preview.title_count}:${preview.status ?? "?"}`,
+  );
+
+  if (!healCli.ok && !preview.ok) {
+    return {
+      preview,
+      healCliOk: false,
+      settled: {
+        rows: [],
+        after: assessListingExtract([], { minRows: 1 }),
+        recovered: false,
+        attempts: 0,
+      },
+      outputSnippet: healCli.output.slice(0, 200),
+    };
+  }
+
+  if (!input.autoApprove || preview.status === "awaiting_approval") {
+    input.stages.push(`studio_approve_autosave:try${input.attempt}`);
+    const approved = await runStudioCli(
+      "approve",
+      [input.collector_id, input.url],
+      { autoSave: true, timeoutMs: input.budget.healTimeoutMs },
+    );
+    input.output_snippets.push(approved.output.slice(0, 400));
+  } else {
+    input.stages.push(`studio_heal_done:try${input.attempt}`);
+  }
+
+  input.stages.push(`settle_verify:try${input.attempt}`);
+  const settled = await rerunUntilHealthy(input.rerun, {
+    attempts: input.budget.settleAttempts,
+    baseDelayMs: input.budget.settleDelayMs,
+  });
+  input.stages.push(
+    `verify:try${input.attempt}:${settled.after.status}:poll${settled.attempts}`,
+  );
+
+  return { preview, healCliOk: healCli.ok, settled, outputSnippet: "" };
+}
+
 /**
  * Strong heal loop (BD Workflow 2 + industry detect→repair→verify):
- * assess → heal --auto-approve --auto-save → preview gate → settle re-run.
- * Fixture mode skips Studio/Gemini spend.
+ * assess → up to N heal passes → settle re-run each pass.
  */
 export async function runHealAndVerify(input: {
   collectorId: string;
@@ -115,14 +191,20 @@ export async function runHealAndVerify(input: {
   useGemini?: boolean;
   previousCount?: number | null;
   skipStudio?: boolean;
-  /** Live only: pass false to stop at approval gate (manual review). Default true. */
   autoApprove?: boolean;
   settleAttempts?: number;
+  maxHealAttempts?: number;
+  budget?: Partial<HealRuntimeBudget>;
 }): Promise<HealLoopResult> {
   const stages: string[] = [];
   const output_snippets: string[] = [];
   const mode: HealLoopMode = input.mode ?? (input.skipStudio ? "fixture" : "live");
   const collector_id = input.collectorId;
+  const budget = healRuntimeBudget({
+    settleAttempts: input.settleAttempts,
+    ...input.budget,
+  });
+  const maxHealAttempts = input.maxHealAttempts ?? budget.maxHealAttempts;
 
   const before = assessListingExtract(input.brokenRows, {
     previousCount: input.previousCount,
@@ -155,15 +237,17 @@ export async function runHealAndVerify(input: {
       stages: [...stages, "skip:already_healthy"],
       output_snippets,
       rows_after: input.brokenRows,
+      heal_attempts: 0,
     };
   }
 
-  const { prompt, source } = await resolveHealPrompt({
+  const { prompt: initialPrompt, source } = await resolveHealPrompt({
     assessment: before,
     userPrompt: input.userPrompt,
     useGemini: mode === "live" && input.useGemini === true,
   });
   stages.push(`prompt:${source}`);
+  let prompt = initialPrompt;
 
   if (mode === "fixture" || input.skipStudio || !isStudioCollectorId(collector_id)) {
     stages.push("fixture_heal");
@@ -199,10 +283,10 @@ export async function runHealAndVerify(input: {
       output_snippets,
       rows_after: settled.rows,
       settle_attempts: settled.attempts,
+      heal_attempts: 1,
     };
   }
 
-  stages.push("studio_heal_autosave");
   await appendHealHistory({
     at: new Date().toISOString(),
     collector_id,
@@ -215,98 +299,65 @@ export async function runHealAndVerify(input: {
   });
 
   const autoApprove = input.autoApprove !== false;
-  const healCli = await runStudioCli(
-    "heal",
-    [collector_id, input.url, prompt],
-    { autoApprove, autoSave: autoApprove },
-  );
-  output_snippets.push(healCli.output.slice(0, 700));
+  let lastPreview = { ok: false, title_count: 0, status: null as string | null };
+  let lastSettled = {
+    rows: [] as ListingRow[],
+    after: null as ExtractAssessment | null,
+    recovered: false,
+    attempts: 0,
+  };
+  let healAttempts = 0;
 
-  const preview = healPreviewLooksHealthy(healCli.output);
-  stages.push(
-    `preview:${preview.ok ? "ok" : "weak"}:${preview.title_count}:${preview.status ?? "?"}`,
-  );
-
-  if (!healCli.ok && !preview.ok) {
-    stages.push("heal_failed");
-    await appendHealHistory({
-      at: new Date().toISOString(),
+  for (let attempt = 1; attempt <= maxHealAttempts; attempt++) {
+    healAttempts = attempt;
+    const pass = await runStudioHealPass({
       collector_id,
       url: input.url,
-      surface: input.surface,
-      stage: "heal_failed",
-      before_count: before.valid_count,
-      after_count: 0,
-      prompt_source: source,
-      note: healCli.output.slice(0, 200),
-    });
-    return {
-      mode,
-      collector_id,
-      url: input.url,
-      before,
-      after: null,
-      healed: false,
-      same_id: true,
       prompt,
-      prompt_source: source,
+      autoApprove,
+      budget,
+      rerun: input.rerun,
       stages,
       output_snippets,
-      rows_after: [],
-      preview_title_count: preview.title_count,
-    };
-  }
-
-  // If heal stopped at gate without auto-approve, approve+save explicitly.
-  if (!autoApprove || preview.status === "awaiting_approval") {
-    stages.push("studio_approve_autosave");
-    const approved = await runStudioCli(
-      "approve",
-      [collector_id, input.url],
-      { autoSave: true },
-    );
-    output_snippets.push(approved.output.slice(0, 400));
-    if (approved.ok) {
-      await appendHealHistory({
-        at: new Date().toISOString(),
-        collector_id,
-        url: input.url,
-        surface: input.surface,
-        stage: "approved",
-        before_count: before.valid_count,
-        after_count: 0,
-        prompt_source: source,
-      });
-    }
-  } else {
-    stages.push("studio_heal_done");
-    await appendHealHistory({
-      at: new Date().toISOString(),
-      collector_id,
-      url: input.url,
-      surface: input.surface,
-      stage: "approved",
-      before_count: before.valid_count,
-      after_count: preview.title_count,
-      prompt_source: source,
-      note: "auto-approve+auto-save",
+      attempt,
     });
+    lastPreview = pass.preview;
+    lastSettled = {
+      rows: pass.settled.rows,
+      after: pass.settled.after,
+      recovered: pass.settled.recovered,
+      attempts: pass.settled.attempts,
+    };
+
+    if (pass.settled.recovered) break;
+
+    if (!pass.healCliOk && !pass.preview.ok) {
+      stages.push(`heal_failed:try${attempt}`);
+      if (attempt >= maxHealAttempts) break;
+      prompt = retightenHealPrompt(prompt, "heal_failed");
+      stages.push("retighten:heal_failed");
+      continue;
+    }
+
+    if (pass.preview.ok && !pass.settled.recovered) {
+      stages.push(`warn:preview_ok_run_empty:try${attempt}`);
+      if (attempt >= maxHealAttempts) break;
+      prompt = retightenHealPrompt(prompt, "run_empty");
+      stages.push("retighten:run_empty");
+      continue;
+    }
+
+    if (!pass.preview.ok) {
+      if (attempt >= maxHealAttempts) break;
+      prompt = retightenHealPrompt(prompt, "preview_weak");
+      stages.push("retighten:preview_weak");
+      continue;
+    }
+
+    break;
   }
 
-  // Industry rule: preview is a claim; Collection re-run is the truth.
-  stages.push("settle_verify");
-  const settled = await rerunUntilHealthy(input.rerun, {
-    attempts: input.settleAttempts ?? 4,
-    baseDelayMs: 8_000,
-  });
-  stages.push(`verify:${settled.after.status}:try${settled.attempts}`);
-
-  // Never mark recovered on preview alone.
-  const recovered = settled.recovered;
-  if (!recovered && preview.ok) {
-    stages.push("warn:preview_ok_run_empty");
-  }
-
+  const recovered = lastSettled.recovered;
   await appendHealHistory({
     at: new Date().toISOString(),
     collector_id,
@@ -314,11 +365,11 @@ export async function runHealAndVerify(input: {
     surface: input.surface,
     stage: recovered ? "recovered" : "still_broken",
     before_count: before.valid_count,
-    after_count: settled.after.valid_count,
-    null_rate: settled.after.null_rate,
-    qa_flags: settled.after.qa_flags,
+    after_count: lastSettled.after?.valid_count ?? 0,
+    null_rate: lastSettled.after?.null_rate,
+    qa_flags: lastSettled.after?.qa_flags,
     prompt_source: source,
-    note: preview.ok ? `preview_titles=${preview.title_count}` : "preview_weak",
+    note: `heal_attempts=${healAttempts} preview_titles=${lastPreview.title_count}`,
   });
 
   return {
@@ -326,16 +377,17 @@ export async function runHealAndVerify(input: {
     collector_id,
     url: input.url,
     before,
-    after: settled.after,
+    after: lastSettled.after,
     healed: recovered,
     same_id: true,
     prompt,
     prompt_source: source,
     stages,
     output_snippets,
-    rows_after: settled.rows,
-    preview_title_count: preview.title_count,
-    settle_attempts: settled.attempts,
+    rows_after: lastSettled.rows,
+    preview_title_count: lastPreview.title_count,
+    settle_attempts: lastSettled.attempts,
+    heal_attempts: healAttempts,
   };
 }
 
@@ -364,9 +416,12 @@ export function healStatusDiscordEmbed(input: {
           .join("\n"),
         color,
         footer: {
-          text: "BrandRadar · QA → heal --auto-approve --auto-save → settle verify",
+          text: "BrandRadar · QA → heal (≤2 tries) → settle verify",
         },
       },
     ],
   };
 }
+
+// Re-export for tests
+export type { RetightenReason };

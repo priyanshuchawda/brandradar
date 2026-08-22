@@ -12,18 +12,14 @@ import {
 } from "@/lib/guard";
 import { healLimiter } from "@/lib/rate-limit";
 import { IntelSnapshotSchema } from "@/lib/intel-schema";
-import { intelUpdatesCollectorId } from "@/lib/brightdata";
 import { isStudioCollectorId, runStudioCli } from "@/lib/studio";
 import { loadCohortConfig } from "@/lib/rivals";
 import { assertPublicHttpsUrl } from "@/lib/urls";
-import { runIntelPull } from "@/lib/intel-pull";
-import {
-  healStatusDiscordEmbed,
-  runHealAndVerify,
-} from "@/lib/heal-engine";
+import { intelUpdatesCollectorId } from "@/lib/brightdata";
+import { runIntelAutoHeal, healStatusDiscordEmbed } from "@/lib/intel-auto-heal";
 import { postEmbedBrief } from "@/lib/discord-api";
 import { discordConfigured, discordMode } from "@/lib/discord";
-import type { ListingRow } from "@/lib/extract-qa";
+import { healRuntimeBudget } from "@/lib/runtime-env";
 
 export const maxDuration = 300;
 
@@ -31,19 +27,15 @@ const BodySchema = z.object({
   action: z.enum(["heal", "approve", "auto_loop"]),
   snapshot: IntelSnapshotSchema.optional(),
   prompt: z.string().max(MAX_HEAL_PROMPT).optional(),
-  /** Opt-in Gemini Flash draft for heal prompt (off by default). */
   useGemini: z.boolean().optional(),
   notifyDiscord: z.boolean().optional(),
   forceMock: z.boolean().optional(),
+  maxHealAttempts: z.number().int().min(1).max(2).optional(),
 });
 
 const DEFAULT_PROMPT =
   "Update listing extract for public blog/guides rows: title, absolute url, published_at if shown, short summary. Keep the same collector id. Listing pages only — do not open PDPs.";
 
-/**
- * Heal Monday Diff collector (same COLLECTOR_INTEL_UPDATES id).
- * `auto_loop` = assess → one heal+approve → re-pull verify (cost-capped).
- */
 export async function POST(request: Request) {
   const originBlock = enforceOrigin(request);
   if (originBlock) return originBlock;
@@ -93,46 +85,14 @@ export async function POST(request: Request) {
 
   if (parsed.data.action === "auto_loop") {
     const forceMock = parsed.data.forceMock === true;
-    const prior = parsed.data.snapshot ?? (await runIntelPull({
+    const loop = await runIntelAutoHeal({
+      snapshot: parsed.data.snapshot,
       forceMock,
-      persist: false,
-      refresh: !forceMock,
-    }));
-    const brokenRows: ListingRow[] = prior.rivals.flatMap((r) =>
-      r.entries.map((e) => ({
-        title: e.title,
-        url: e.url,
-        published_at: e.published_at,
-        summary: e.summary,
-      })),
-    );
-    const previousCount = prior.rivals.reduce((n, r) => n + r.entries.length, 0);
-
-    const loop = await runHealAndVerify({
-      collectorId,
-      url,
-      surface: "intel",
-      brokenRows,
-      previousCount: previousCount || null,
-      skipStudio: forceMock,
-      mode: forceMock ? "fixture" : "live",
-      userPrompt: parsed.data.prompt || prior.health.heal_hint || DEFAULT_PROMPT,
+      userPrompt: parsed.data.prompt,
       useGemini: parsed.data.useGemini === true,
-      rerun: async () => {
-        const next = await runIntelPull({
-          forceMock,
-          persist: !forceMock,
-          refresh: !forceMock,
-        });
-        return next.rivals.flatMap((r) =>
-          r.entries.map((e) => ({
-            title: e.title,
-            url: e.url,
-            published_at: e.published_at,
-            summary: e.summary,
-          })),
-        );
-      },
+      budget: parsed.data.maxHealAttempts
+        ? { maxHealAttempts: parsed.data.maxHealAttempts }
+        : undefined,
     });
 
     let discord: unknown = null;
@@ -145,7 +105,7 @@ export async function POST(request: Request) {
       const payload = healStatusDiscordEmbed({
         stage: loop.healed ? "recovered" : "still_broken",
         collectorId: loop.collector_id,
-        url,
+        url: loop.anchor,
         beforeCount: loop.before.valid_count,
         afterCount: loop.after?.valid_count ?? 0,
         stages: loop.stages,
@@ -160,8 +120,9 @@ export async function POST(request: Request) {
         action: "auto_loop",
         ...loop,
         discord,
+        budget: healRuntimeBudget(),
         costHint:
-          "One Studio heal + one refresh verify. Gemini only if useGemini:true. Weekly cron stays on week cache.",
+          "Heal uses Vercel-safe budget on prod (1 try). Local/CLI can run 2 tries. Gemini only if useGemini:true.",
       }),
       quota,
     );

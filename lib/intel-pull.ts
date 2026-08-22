@@ -259,7 +259,17 @@ export async function runIntelPull(input?: {
       try {
         const live = await pullLiveBuckets();
         const flatRows = live.rivals.flatMap((r) => r.entries);
-        const assessment = assessListingExtract(flatRows, { minRows: 1 });
+        const allowedHosts = config.rivals.flatMap((rival) => {
+          try {
+            return [new URL(rival.homepage).hostname.replace(/^www\./, "")];
+          } catch {
+            return [];
+          }
+        });
+        const assessment = assessListingExtract(flatRows, {
+          minRows: 1,
+          allowedHosts,
+        });
         const emptyRivals = live.rivals.filter((r) => r.entries.length === 0).length;
         const emptyRate = emptyRivals / Math.max(live.rivals.length, 1);
         snapshot = IntelSnapshotSchema.parse({
