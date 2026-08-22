@@ -22,6 +22,11 @@ import {
   type HealLabLayout,
 } from "@/lib/heal-lab";
 import { HEAL_LAB_BRAND } from "@/lib/heal-lab-data";
+import {
+  healStatusDiscordEmbed,
+  runHealAndVerify,
+} from "@/lib/heal-engine";
+import { assessListingExtract } from "@/lib/extract-qa";
 import { healLimiter } from "@/lib/rate-limit";
 import { isStudioCollectorId, runStudioCli } from "@/lib/studio";
 
@@ -36,6 +41,7 @@ const BodySchema = z.object({
     "heal",
     "approve",
     "discord",
+    "auto_loop",
   ]),
   layout: z.enum(["before", "after"]).optional(),
   /** Skip Studio — zero credits (local demos). */
@@ -43,6 +49,9 @@ const BodySchema = z.object({
   rowCountBefore: z.number().int().min(0).optional(),
   rowCountAfter: z.number().int().min(0).optional(),
   prompt: z.string().max(500).optional(),
+  /** Allow Gemini Flash to draft heal prompt (live only; off by default for cost). */
+  useGemini: z.boolean().optional(),
+  notifyDiscord: z.boolean().optional(),
 });
 
 export async function GET() {
@@ -112,6 +121,7 @@ export async function POST(request: Request) {
   if (parsed.data.action === "run") {
     if (forceMock) {
       const rows = layout === "after" ? brokenExtract() : fixtureExtract();
+      const qa = assessListingExtract(rows);
       return withRateHeaders(
         NextResponse.json({
           status: rows.length ? "ok" : "empty",
@@ -119,6 +129,7 @@ export async function POST(request: Request) {
           layout,
           rows,
           count: rows.length,
+          qa,
           url: healLabUrl(layout),
           note:
             layout === "after"
@@ -135,6 +146,7 @@ export async function POST(request: Request) {
         quota,
       );
     }
+    const qa = assessListingExtract(result.rows);
     return withRateHeaders(
       NextResponse.json({
         status: result.rows.length ? "ok" : "empty",
@@ -142,8 +154,60 @@ export async function POST(request: Request) {
         layout,
         rows: result.rows,
         count: result.rows.length,
+        qa,
         url: healLabUrl(layout),
         collector_id: healLabCollectorId(),
+      }),
+      quota,
+    );
+  }
+
+  if (parsed.data.action === "auto_loop") {
+    const collectorId = healLabCollectorId() ?? "c_fixture_heal_lab";
+    const url = healLabUrl("after");
+    const loop = await runHealAndVerify({
+      collectorId,
+      url,
+      surface: "heal-lab",
+      brokenRows: brokenExtract(),
+      previousCount: 5,
+      skipStudio: forceMock,
+      mode: forceMock ? "fixture" : "live",
+      userPrompt: parsed.data.prompt,
+      useGemini: parsed.data.useGemini === true,
+      rerun: async () => {
+        if (forceMock) return fixtureExtract();
+        const result = await runHealLabCollector("after");
+        if (!result.ok) return [];
+        return result.rows;
+      },
+    });
+
+    let discord: unknown = null;
+    if (parsed.data.notifyDiscord !== false && discordConfigured() && discordMode() === "bot") {
+      const channelId = process.env.DISCORD_CHANNEL_ID!.trim();
+      const payload = healStatusDiscordEmbed({
+        stage: loop.healed ? "recovered" : "still_broken",
+        collectorId: loop.collector_id,
+        url,
+        beforeCount: loop.before.valid_count,
+        afterCount: loop.after?.valid_count ?? 0,
+        stages: loop.stages,
+      });
+      const posted = await postEmbedBrief(channelId, payload);
+      discord = posted.ok ? { status: "posted" } : { error: posted.error };
+    }
+
+    return withRateHeaders(
+      NextResponse.json({
+        status: loop.healed ? "recovered" : "still_broken",
+        ...loop,
+        rows: loop.rows_after,
+        count: loop.rows_after.length,
+        discord,
+        note: loop.healed
+          ? "Same Collector ID · QA verified after one heal+rerun."
+          : "Heal loop finished without a healthy extract — check stages/output.",
       }),
       quota,
     );

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
-import { postIntelToDiscord, discordConfigured } from "@/lib/discord";
+import { postIntelToDiscord, discordConfigured, discordMode } from "@/lib/discord";
+import { postEmbedBrief } from "@/lib/discord-api";
 import { runIntelPull } from "@/lib/intel-pull";
+import { healStatusDiscordEmbed } from "@/lib/heal-engine";
+import { intelUpdatesCollectorId } from "@/lib/brightdata";
 
 export const maxDuration = 300;
 
@@ -8,6 +11,7 @@ export const maxDuration = 300;
  * Monday Diff cron: one Studio pull (or week cache) → Discord.
  * Auth: Authorization: Bearer $CRON_SECRET or ?secret=
  * Retries are cheap: same ISO week hits cache unless refresh=1.
+ * If extract QA fails, posts a broken alert (no auto-heal — cost gate).
  */
 export async function GET(request: Request) {
   return runCron(request);
@@ -51,6 +55,37 @@ async function runCron(request: Request) {
     );
   }
 
+  let healthAlert: unknown = null;
+  const broken =
+    snapshot.health.qa_flags.length > 0 ||
+    snapshot.health.broken_fields.length > 0 ||
+    Boolean(snapshot.health.heal_hint);
+  if (broken && discordMode() === "bot" && process.env.DISCORD_CHANNEL_ID) {
+    const collectorId =
+      snapshot.health.collector_ids[0] || intelUpdatesCollectorId() || "unknown";
+    const anchor =
+      snapshot.rivals.find((r) => r.update_url)?.update_url || "n/a";
+    const rowCount = snapshot.rivals.reduce((n, r) => n + r.entries.length, 0);
+    const payload = healStatusDiscordEmbed({
+      stage: "broken",
+      collectorId,
+      url: anchor,
+      beforeCount: rowCount,
+      afterCount: rowCount,
+      stages: [
+        `qa_flags:${snapshot.health.qa_flags.join(",") || "none"}`,
+        `null_rate:${snapshot.health.null_rate}`,
+      ],
+    });
+    const alert = await postEmbedBrief(
+      process.env.DISCORD_CHANNEL_ID.trim(),
+      payload,
+    );
+    healthAlert = alert.ok
+      ? { status: "broken_alert_posted" }
+      : { error: alert.error };
+  }
+
   return NextResponse.json({
     status: "ok",
     week: snapshot.week,
@@ -59,5 +94,11 @@ async function runCron(request: Request) {
     plays: snapshot.plays.length,
     cached: snapshot.notes.some((n) => n.includes("Week cache hit")),
     refresh,
+    health: {
+      null_rate: snapshot.health.null_rate,
+      qa_flags: snapshot.health.qa_flags,
+      broken_fields: snapshot.health.broken_fields,
+    },
+    healthAlert,
   });
 }

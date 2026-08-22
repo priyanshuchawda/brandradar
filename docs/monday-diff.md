@@ -32,7 +32,7 @@ COLLECTOR_INTEL_UPDATES=c_...
 USE_MOCK=false
 ```
 
-Heal keeps the **same** id: `POST /api/intel/heal` or `bdata scraper heal`.
+Heal keeps the **same** id: `POST /api/intel/heal` (`heal` | `approve` | `auto_loop`) or `bdata scraper heal`.
 
 ## Cost controls
 
@@ -44,6 +44,8 @@ Heal keeps the **same** id: `POST /api/intel/heal` or `bdata scraper heal`.
 | Load / post example | Fixture only |
 | Monday cron | One pull; retries hit cache |
 | Gemini on intel path | **Off** — plays are deterministic rules |
+| Strong heal `auto_loop` | One Studio heal + one refresh verify; Gemini only if `useGemini:true` |
+| Cron QA broken | Discord alert only — no auto-heal |
 
 ## API
 
@@ -65,6 +67,10 @@ curl -s -X POST http://localhost:3000/api/discord \
 curl -s -X POST http://localhost:3000/api/intel/heal \
   -H 'content-type: application/json' \
   -d '{"action":"heal"}'
+
+curl -s -X POST http://localhost:3000/api/intel/heal \
+  -H 'content-type: application/json' \
+  -d '{"action":"auto_loop","useGemini":false}'
 
 # Cron (set CRON_SECRET)
 curl -s -X POST "http://localhost:3000/api/cron/monday-diff" \
