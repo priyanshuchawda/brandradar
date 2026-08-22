@@ -44,7 +44,11 @@ export async function resolveDiscordCommand(
   if (name === "intel") {
     const mode = optionValue(data, "mode") ?? "example";
     const forceMock = mode !== "live";
-    const snapshot = await runIntelPull({ forceMock, persist: !forceMock });
+    const snapshot = await runIntelPull({
+      forceMock,
+      persist: !forceMock,
+      refresh: false,
+    });
     return {
       type: 4,
       data: {
