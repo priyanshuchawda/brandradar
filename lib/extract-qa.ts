@@ -19,7 +19,8 @@ export type ExtractAssessment = {
 };
 
 const LISTING_HEAL_BASE =
-  "Public listing page only (blog/guides/changelog). Extract up to 15 posts: title, absolute url, published_at if shown, short summary. Do not open detail/PDP pages. Prefer semantic headings and anchors; use data-test attributes when present.";
+  "Public listing page only (blog/guides/changelog). Extract up to 15 posts: title, absolute url, published_at if shown, short summary. Prefer data-* / data-test / data-dm attrs, then headings+anchors; avoid brittle class names. Titles may sit inside buttons/CTAs — take the link text + href. Do not open detail/PDP pages. Prefer JSON-LD or visible listing cards when present.";
+
 
 /**
  * Validate listing extract against the contract.

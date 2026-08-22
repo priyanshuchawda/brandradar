@@ -36,10 +36,11 @@ No Bright Data credits spent. Gemini heal prompts are **opt-in**.
 Shared engine: `lib/heal-engine.ts` + listing QA in `lib/extract-qa.ts`.
 
 1. Contract gate — empty / null_rate / row_collapse  
-2. At most **one** Studio heal + approve (same collector id)  
-3. Mandatory re-run verify  
-4. History JSONL under `data/heal-history/` (gitignored)  
-5. Discord embeds for broken / recovered / still_broken  
+2. Studio heal with `--auto-approve --auto-save` (same collector id) — avoids preview≠published  
+3. Preview gate — count titles in `preview_result` (claim only)  
+4. Settle verify — Collection re-run with backoff (truth)  
+5. History JSONL under `data/heal-history/` (gitignored)  
+6. Discord embeds for broken / recovered / still_broken  
 
 API: `POST /api/heal-lab` with `"action":"auto_loop"`. Monday Diff: `POST /api/intel/heal` with `"action":"auto_loop"`.
 
