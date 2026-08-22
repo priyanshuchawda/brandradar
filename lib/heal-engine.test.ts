@@ -16,6 +16,10 @@ vi.mock("./studio", async (importOriginal) => {
       runCall += 1;
       return { ok: true, output: previewOk };
     }),
+    runStudioHealCli: vi.fn(async () => {
+      runCall += 1;
+      return { ok: true, output: previewOk, unlocked: false };
+    }),
   };
 });
 

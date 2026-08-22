@@ -19,6 +19,7 @@ import {
   healLabDiscordEmbed,
   healLabUrl,
   runHealLabCollector,
+  unlockHealLabCollector,
   type HealLabLayout,
 } from "@/lib/heal-lab";
 import { HEAL_LAB_BRAND } from "@/lib/heal-lab-data";
@@ -41,6 +42,7 @@ const BodySchema = z.object({
     "run",
     "heal",
     "approve",
+    "unlock",
     "discord",
     "auto_loop",
   ]),
@@ -67,7 +69,14 @@ export async function GET() {
     ready: Boolean(id && isStudioCollectorId(id)),
     discord: discordConfigured(),
     costHint:
-      "Use forceMock/fixture locally. Same-URL stress: /heal-lab/live (flip HEAL_LAB_LIVE_VARIANT + redeploy).",
+      "Judge demo: Run before → after → Strong heal loop. Fixtures default (free). Enable Live Studio for real c_* proof.",
+    demoSteps: [
+      "Open /heal-lab/before and /heal-lab/after side by side",
+      "Run before — expect 5 rows",
+      "Run after — expect 0 rows (broken)",
+      "Strong heal loop — same collector id, rows back",
+      "Optional: Discord recovery embed",
+    ],
   });
 }
 
@@ -167,13 +176,28 @@ export async function POST(request: Request) {
 
   if (parsed.data.action === "auto_loop") {
     const collectorId = healLabCollectorId() ?? "c_fixture_heal_lab";
-    const url = healLabUrl(layout === "before" ? "after" : layout);
+    const healLayout: HealLabLayout = layout === "before" ? "after" : layout;
+    const url = healLabUrl(healLayout);
+    let brokenRows = brokenExtract();
+    let previousCount = 5;
+
+    if (!forceMock) {
+      const beforeRun = await runHealLabCollector("before");
+      if (beforeRun.ok) {
+        previousCount = beforeRun.rows.length;
+      }
+      const afterRun = await runHealLabCollector(healLayout);
+      if (afterRun.ok) {
+        brokenRows = afterRun.rows;
+      }
+    }
+
     const loop = await runHealAndVerify({
       collectorId,
       url,
       surface: "heal-lab",
-      brokenRows: brokenExtract(),
-      previousCount: 5,
+      brokenRows,
+      previousCount,
       skipStudio: forceMock,
       mode: forceMock ? "fixture" : "live",
       userPrompt: parsed.data.prompt,
@@ -183,9 +207,7 @@ export async function POST(request: Request) {
         : undefined,
       rerun: async () => {
         if (forceMock) return fixtureExtract();
-        const result = await runHealLabCollector(
-          layout === "before" ? "after" : layout,
-        );
+        const result = await runHealLabCollector(healLayout);
         if (!result.ok) return [];
         return result.rows;
       },
@@ -213,9 +235,11 @@ export async function POST(request: Request) {
         rows: loop.rows_after,
         count: loop.rows_after.length,
         discord,
-        note: loop.healed
-          ? "Same Collector ID · QA verified after heal+settle verify."
-          : "Heal loop finished without a healthy extract — check stages/output.",
+        note: loop.stages.includes("skip:already_healthy")
+          ? "Extract already healthy on this URL — same collector id, no heal needed."
+          : loop.healed
+            ? "Same Collector ID · QA verified after heal+settle verify."
+            : "Heal loop finished without a healthy extract — check stages/output.",
         budget: healRuntimeBudget(),
       }),
       quota,
@@ -254,6 +278,32 @@ export async function POST(request: Request) {
     );
   }
 
+  if (parsed.data.action === "unlock") {
+    if (forceMock) {
+      return withRateHeaders(
+        NextResponse.json({
+          status: "unlocked",
+          mode: "fixture",
+          note: "Fixture unlock — no Studio job to clear.",
+        }),
+        quota,
+      );
+    }
+    const unlocked = await unlockHealLabCollector();
+    return withRateHeaders(
+      NextResponse.json({
+        status: unlocked.ok ? "unlocked" : "failed",
+        mode: "live",
+        collector_id: unlocked.collector_id,
+        output: unlocked.output.slice(0, 1500),
+        note: unlocked.ok
+          ? "Stuck refactor rejected — collector ready for a new heal."
+          : "Unlock failed — check CLI output or approve/reject in Studio.",
+      }),
+      quota,
+    );
+  }
+
   if (parsed.data.action === "approve") {
     const id = healLabCollectorId();
     if (!id) {
@@ -265,7 +315,9 @@ export async function POST(request: Request) {
         quota,
       );
     }
-    const result = await runStudioCli("approve", [id, healLabUrl("after")]);
+    const result = await runStudioCli("approve", [id, healLabUrl("after")], {
+      autoSave: true,
+    });
     return withRateHeaders(
       NextResponse.json({
         status: result.ok ? "approved" : "failed",

@@ -1,5 +1,5 @@
 import { HEAL_LAB_BRAND, HEAL_LAB_POSTS, healLabPostUrl } from "./heal-lab-data";
-import { isStudioCollectorId, runStudioCli } from "./studio";
+import { extractJsonBlob, isStudioCollectorId, runStudioCli, runStudioHealCli, unlockStuckRefactorJob } from "./studio";
 
 export type HealLabLayout = "before" | "after" | "live";
 
@@ -102,10 +102,8 @@ export async function runHealLabCollector(
   if (!result.ok) {
     return { ok: false, error: result.output.slice(0, 400) || "Studio run failed" };
   }
-  let parsed: unknown = [];
-  try {
-    parsed = JSON.parse(result.output);
-  } catch {
+  const parsed = extractJsonBlob(result.output);
+  if (parsed == null) {
     return { ok: false, error: "Studio run returned non-JSON" };
   }
   const rows = Array.isArray(parsed)
@@ -118,6 +116,22 @@ export async function runHealLabCollector(
   return { ok: true, rows, raw: result.output.slice(0, 2000) };
 }
 
+export const HEAL_LAB_AFTER_HEAL_PROMPT =
+  "Driftmark changelog listing broke after redesign (.post-title removed). Extract up to 15 public posts: title, absolute url, published_at, short summary. Prefer [data-test=\"post-title\"], [data-test=\"post-card\"], and link hrefs inside the feed. Listing page only — do not open detail pages.";
+
+export async function unlockHealLabCollector(): Promise<{
+  ok: boolean;
+  output: string;
+  collector_id: string | null;
+}> {
+  const id = healLabCollectorId();
+  if (!id || !isStudioCollectorId(id)) {
+    return { ok: false, output: "COLLECTOR_HEAL_LAB is not set", collector_id: null };
+  }
+  const result = await unlockStuckRefactorJob(id, healLabUrl("after"));
+  return { ok: result.ok, output: result.output, collector_id: id };
+}
+
 export async function healHealLabCollector(prompt?: string): Promise<{
   ok: boolean;
   output: string;
@@ -127,10 +141,12 @@ export async function healHealLabCollector(prompt?: string): Promise<{
   if (!id || !isStudioCollectorId(id)) {
     return { ok: false, output: "COLLECTOR_HEAL_LAB is not set", collector_id: null };
   }
-  const text =
-    prompt ||
-    "Changelog listing broke after redesign. Extract each public post: title, absolute url, published_at, short summary. Prefer data-dm / data-test attributes if present. Titles may be inside buttons or CTAs. Listing page only — do not open detail pages.";
-  const result = await runStudioCli("heal", [id, healLabUrl("live"), text]);
+  const url = healLabUrl("after");
+  const text = prompt || HEAL_LAB_AFTER_HEAL_PROMPT;
+  const result = await runStudioHealCli([id, url, text], {
+    autoApprove: true,
+    autoSave: true,
+  });
   return { ok: result.ok, output: result.output, collector_id: id };
 }
 

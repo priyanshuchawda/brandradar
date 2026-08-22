@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   extractJsonBlob,
   healPreviewLooksHealthy,
+  isRefactorJobConflict,
   isStudioCollectorId,
   resolveStudioCollector,
 } from "./studio";
@@ -29,6 +30,14 @@ const base: Snapshot = {
   mode: "mock",
   notes: [],
 };
+
+describe("isRefactorJobConflict", () => {
+  it("detects 409 and open refactor messages", () => {
+    expect(isRefactorJobConflict("HTTP 409 Another refactor job is still in progress")).toBe(true);
+    expect(isRefactorJobConflict("refactor job is still in progress")).toBe(true);
+    expect(isRefactorJobConflict('{"status":"done"}')).toBe(false);
+  });
+});
 
 describe("isStudioCollectorId", () => {
   it("accepts real c_* ids and rejects mocks", () => {

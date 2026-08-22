@@ -20,6 +20,16 @@ Fake brand: **Driftmark** (public demo only).
 - Before: `https://brandradar-beta.vercel.app/heal-lab/before`
 - After: `https://brandradar-beta.vercel.app/heal-lab/after`
 
+## Judge demo (best proof)
+
+1. Open [before](https://brandradar-beta.vercel.app/heal-lab/before) and [after](https://brandradar-beta.vercel.app/heal-lab/after) in two tabs — show the redesign.
+2. On the app **Heal Lab** tab, click **Run full demo proof** (fixtures = free rehearsal).
+3. For live judges: enable **Live Studio**, click **Run full demo proof** again — expect `5 → 0 → 5` on the proof card, same `c_*`.
+4. If heal fails with a stuck job: **Unlock stuck job** (auto-retries on 409 during heal as well).
+5. Optional: **Post recovery to Discord**.
+
+Proof card shows: mode, collector id (unchanged), row counts before/after/healed.
+
 ## Cheap local testing (default)
 
 Heal Lab UI defaults to **fixtures** (`forceMock: true`):

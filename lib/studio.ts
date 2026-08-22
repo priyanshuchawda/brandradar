@@ -62,10 +62,36 @@ export type StudioCliOptions = {
   autoApprove?: boolean;
   /** Heal/approve: persist template after success (BD `auto_save`). Default true with autoApprove. */
   autoSave?: boolean;
+  /** Approve: discard pending refactor and unlock collector for a new heal. */
+  reject?: boolean;
   timeoutMs?: number;
   /** Heal CLI poll cap in seconds (BD `--timeout`). */
   healCliTimeoutSec?: number;
 };
+
+/** BD returns 409 when a prior refactor/heal job is still open. */
+export function isRefactorJobConflict(output: string): boolean {
+  const text = output.toLowerCase();
+  return (
+    text.includes("409") ||
+    text.includes("another refactor") ||
+    text.includes("refactor job is still in progress") ||
+    text.includes("job is still in progress")
+  );
+}
+
+/** Drop a stuck Studio refactor so heal can start again. */
+export async function unlockStuckRefactorJob(
+  collectorId: string,
+  url: string,
+  options?: Pick<StudioCliOptions, "timeoutMs">,
+): Promise<{ ok: boolean; output: string }> {
+  return runStudioCli("approve", [collectorId, url], {
+    reject: true,
+    autoSave: false,
+    timeoutMs: options?.timeoutMs ?? STUDIO_RUN_TIMEOUT_MS,
+  });
+}
 
 function bdataArgs(
   action: "run" | "heal" | "approve",
@@ -110,8 +136,32 @@ function bdataArgs(
     url,
     "--pretty",
   ];
-  if (options?.autoSave !== false) approve.push("--auto-save");
+  if (options?.reject) approve.push("--reject");
+  else if (options?.autoSave !== false) approve.push("--auto-save");
   return approve;
+}
+
+/** Heal with one automatic unlock+retry when BD reports an open refactor job. */
+export async function runStudioHealCli(
+  args: string[],
+  options?: StudioCliOptions,
+): Promise<{ ok: boolean; output: string; unlocked: boolean }> {
+  let result = await runStudioCli("heal", args, options);
+  if (!isRefactorJobConflict(result.output)) {
+    return { ...result, unlocked: false };
+  }
+  const [collectorId, url] = args;
+  if (!collectorId || !url) return { ...result, unlocked: false };
+  const unlocked = await unlockStuckRefactorJob(collectorId, url, options);
+  if (!unlocked.ok) {
+    return {
+      ok: false,
+      output: `${result.output}\n--- unlock failed ---\n${unlocked.output}`,
+      unlocked: false,
+    };
+  }
+  result = await runStudioCli("heal", args, options);
+  return { ...result, unlocked: true };
 }
 
 export async function runStudioCli(

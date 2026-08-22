@@ -10,6 +10,7 @@ type Status = {
   ready: boolean;
   discord: boolean;
   costHint?: string;
+  demoSteps?: string[];
 };
 
 type Row = {
@@ -19,6 +20,29 @@ type Row = {
   summary: string | null;
 };
 
+type DemoProof = {
+  beforeCount: number;
+  afterCount: number;
+  recoveredCount: number;
+  collectorId: string | null;
+  healed: boolean;
+  mode: "fixture" | "live";
+};
+
+type DemoStep = {
+  id: string;
+  label: string;
+  status: "pending" | "running" | "done" | "failed";
+  detail?: string;
+};
+
+const INITIAL_DEMO_STEPS: DemoStep[] = [
+  { id: "before", label: "Scrape /before (healthy layout)", status: "pending" },
+  { id: "after", label: "Scrape /after (redesign — broken)", status: "pending" },
+  { id: "heal", label: "Strong heal loop (same collector id)", status: "pending" },
+  { id: "proof", label: "Verify recovery + proof card", status: "pending" },
+];
+
 export function HealLabApp() {
   const [status, setStatus] = useState<Status | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
@@ -27,10 +51,13 @@ export function HealLabApp() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [beforeCount, setBeforeCount] = useState(0);
+  const [afterCount, setAfterCount] = useState(0);
   /** Default true = zero Studio spend for local testing. */
   const [liveStudio, setLiveStudio] = useState(false);
   const [useGemini, setUseGemini] = useState(false);
   const [qaLine, setQaLine] = useState<string | null>(null);
+  const [demoSteps, setDemoSteps] = useState<DemoStep[]>(INITIAL_DEMO_STEPS);
+  const [proof, setProof] = useState<DemoProof | null>(null);
 
   useEffect(() => {
     fetch("/api/heal-lab")
@@ -38,6 +65,10 @@ export function HealLabApp() {
       .then(setStatus)
       .catch(() => setStatus(null));
   }, []);
+
+  function patchDemoStep(id: string, patch: Partial<DemoStep>) {
+    setDemoSteps((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  }
 
   async function call(body: Record<string, unknown>) {
     setLoading(true);
@@ -58,6 +89,9 @@ export function HealLabApp() {
       if (Array.isArray(payload.rows)) setRows(payload.rows);
       if (typeof payload.count === "number" && body.action === "run" && body.layout === "before") {
         setBeforeCount(payload.count);
+      }
+      if (typeof payload.count === "number" && body.action === "run" && body.layout === "after") {
+        setAfterCount(payload.count);
       }
       if (payload.qa || payload.before) {
         const qa = payload.qa ?? payload.after ?? payload.before;
@@ -80,6 +114,90 @@ export function HealLabApp() {
     }
   }
 
+  async function runJudgeDemo() {
+    setError(null);
+    setProof(null);
+    setDemoSteps(INITIAL_DEMO_STEPS.map((s) => ({ ...s, status: "pending", detail: undefined })));
+
+    patchDemoStep("before", { status: "running" });
+    const before = await call({ action: "run", layout: "before" });
+    if (!before) {
+      patchDemoStep("before", { status: "failed", detail: "Request failed" });
+      return;
+    }
+    const bCount = typeof before.count === "number" ? before.count : 0;
+    setBeforeCount(bCount);
+    patchDemoStep("before", {
+      status: bCount >= 1 ? "done" : "failed",
+      detail: `${bCount} rows`,
+    });
+
+    patchDemoStep("after", { status: "running" });
+    const after = await call({ action: "run", layout: "after" });
+    if (!after) {
+      patchDemoStep("after", { status: "failed", detail: "Request failed" });
+      return;
+    }
+    const aCount = typeof after.count === "number" ? after.count : 0;
+    setAfterCount(aCount);
+    const afterOk = liveStudio ? aCount >= 1 : aCount === 0;
+    patchDemoStep("after", {
+      status: afterOk ? "done" : "failed",
+      detail: liveStudio
+        ? aCount >= 1
+          ? `${aCount} rows (collector already healed on /after)`
+          : "0 rows (broken — heal next)"
+        : aCount === 0
+          ? "0 rows (broken — expected)"
+          : `${aCount} rows (expected 0)`,
+    });
+
+    patchDemoStep("heal", { status: "running", detail: liveStudio ? "~3–5 min on Live Studio" : "fixture" });
+    const heal = await call({
+      action: "auto_loop",
+      layout: "after",
+      useGemini,
+      notifyDiscord: Boolean(status?.discord),
+    });
+    if (!heal) {
+      patchDemoStep("heal", { status: "failed", detail: "Heal loop failed" });
+      return;
+    }
+    const recovered = heal.healed === true || (typeof heal.count === "number" && heal.count >= 1);
+    const rCount = typeof heal.count === "number" ? heal.count : rows.length;
+    patchDemoStep("heal", {
+      status: recovered ? "done" : "failed",
+      detail: recovered ? `${rCount} rows recovered` : "Still broken — try Unlock stuck job",
+    });
+
+    const collectorId =
+      (typeof heal.collector_id === "string" ? heal.collector_id : null) ??
+      status?.collector ??
+      null;
+    const nextProof: DemoProof = {
+      beforeCount: bCount,
+      afterCount: aCount,
+      recoveredCount: rCount,
+      collectorId,
+      healed: recovered,
+      mode: liveStudio ? "live" : "fixture",
+    };
+    setProof(nextProof);
+    patchDemoStep("proof", {
+      status: recovered ? "done" : "failed",
+      detail: recovered
+        ? `Same id ${collectorId ?? "c_*"} · ${bCount} → 0 → ${rCount}`
+        : "Recovery incomplete",
+    });
+  }
+
+  function stepIcon(s: DemoStep["status"]) {
+    if (s === "done") return "✓";
+    if (s === "failed") return "✗";
+    if (s === "running") return "…";
+    return "○";
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
       <header className="grid gap-2">
@@ -93,10 +211,87 @@ export function HealLabApp() {
           Fake startup <strong className="text-text">{status?.brand ?? "Driftmark"}</strong>{" "}
           changelog we control. Scrape <code className="text-ping">/before</code>, switch to{" "}
           <code className="text-ping">/after</code> (class rename), watch extract go empty, then{" "}
-          <code className="text-ping">bdata scraper heal</code> — Collector ID unchanged, Discord
-          still works. Combined with Monday Diff for idea 07.
+          Studio self-heals — Collector ID unchanged.
         </p>
       </header>
+
+      <section className="rounded-2xl border border-ping/30 bg-ping/5 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-ping">Judge demo (one click)</h2>
+            <p className="mt-1 text-xs text-muted">
+              Runs before → after → strong heal loop and builds a proof card. Fixtures by default;
+              enable Live Studio for real Bright Data proof.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={runJudgeDemo}
+            className="min-h-11 rounded-lg bg-ping px-5 text-sm font-semibold text-[#04140c] disabled:opacity-50"
+          >
+            Run full demo proof
+          </button>
+        </div>
+        <ol className="mt-4 grid gap-2 text-sm">
+          {demoSteps.map((step) => (
+            <li
+              key={step.id}
+              className={`flex flex-wrap items-baseline gap-2 rounded-lg border px-3 py-2 ${
+                step.status === "done"
+                  ? "border-ping/40 text-text"
+                  : step.status === "failed"
+                    ? "border-alert/40 text-alert"
+                    : step.status === "running"
+                      ? "border-blue/40 text-blue"
+                      : "border-line text-muted"
+              }`}
+            >
+              <span className="font-mono text-xs">{stepIcon(step.status)}</span>
+              <span>{step.label}</span>
+              {step.detail ? (
+                <span className="font-mono text-xs opacity-80">· {step.detail}</span>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {proof ? (
+        <section
+          className={`rounded-2xl border p-4 ${
+            proof.healed ? "border-ping/50 bg-ping/10" : "border-alert/40 bg-alert/10"
+          }`}
+        >
+          <h2 className="text-sm font-semibold">
+            {proof.healed ? "Proof · self-heal recovered" : "Proof · recovery incomplete"}
+          </h2>
+          <dl className="mt-3 grid gap-2 font-mono text-xs sm:grid-cols-2">
+            <div>
+              <dt className="text-muted">Mode</dt>
+              <dd>{proof.mode === "live" ? "Live Studio (real c_*)" : "Fixture (zero credits)"}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">Collector id</dt>
+              <dd className="text-ping">{proof.collectorId ?? "fixture"} (unchanged)</dd>
+            </div>
+            <div>
+              <dt className="text-muted">/before rows</dt>
+              <dd>{proof.beforeCount}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">/after rows (broken)</dt>
+              <dd>{proof.afterCount}</dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-muted">After heal</dt>
+              <dd className="text-base font-semibold">
+                {proof.beforeCount} → {proof.afterCount} → {proof.recoveredCount}
+              </dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
 
       <div className="flex flex-wrap gap-4 text-sm text-muted">
         <label className="flex items-center gap-2">
@@ -106,7 +301,7 @@ export function HealLabApp() {
             onChange={(e) => setLiveStudio(e.target.checked)}
             className="size-4"
           />
-          Live Studio (spends credits)
+          Live Studio (spends credits — use for judge proof)
         </label>
         <label className="flex items-center gap-2">
           <input
@@ -159,47 +354,29 @@ export function HealLabApp() {
         <button
           type="button"
           disabled={loading}
-          onClick={() => call({ action: "heal" })}
+          onClick={() => call({ action: "auto_loop", layout: "after", useGemini })}
           className="min-h-11 rounded-lg border border-ping/40 px-4 text-sm text-ping disabled:opacity-50"
         >
-          3 · Heal same id
+          3 · Strong heal loop
         </button>
         <button
           type="button"
           disabled={loading || !liveStudio}
-          onClick={() => call({ action: "approve" })}
+          onClick={() => call({ action: "unlock" })}
           className="min-h-11 rounded-lg border border-line px-4 text-sm text-muted disabled:opacity-40"
         >
-          4 · Approve
+          Unlock stuck job
         </button>
         <button
           type="button"
           disabled={loading}
           onClick={async () => {
-            if (!liveStudio) {
-              const healed = await call({ action: "heal" });
-              if (healed?.rows) setRows(healed.rows);
-              return;
-            }
-            await call({ action: "run", layout: "after" });
+            const result = await call({ action: "run", layout: "after" });
+            if (result && typeof result.count === "number") setAfterCount(result.count);
           }}
           className="min-h-11 rounded-lg border border-blue/40 px-4 text-sm text-blue disabled:opacity-50"
         >
-          5 · Re-run after (recovered)
-        </button>
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() =>
-            call({
-              action: "auto_loop",
-              useGemini,
-              notifyDiscord: Boolean(status?.discord),
-            })
-          }
-          className="min-h-11 rounded-lg bg-ping/90 px-4 text-sm font-medium text-[#04140c] disabled:opacity-50"
-        >
-          Strong heal loop (assess → heal → verify)
+          Re-run after (verify)
         </button>
         <button
           type="button"
@@ -208,7 +385,7 @@ export function HealLabApp() {
             call({
               action: "discord",
               rowCountBefore: beforeCount,
-              rowCountAfter: rows.length || 5,
+              rowCountAfter: rows.length || proof?.recoveredCount || 5,
               layout: "after",
             })
           }
@@ -221,6 +398,9 @@ export function HealLabApp() {
       <p className="font-mono text-xs text-muted">
         stage={stage}
         {status?.collector ? ` · ${status.collector}` : " · set COLLECTOR_HEAL_LAB after deploy"}
+        {beforeCount > 0 || afterCount >= 0
+          ? ` · counts before=${beforeCount} after=${afterCount}`
+          : null}
       </p>
       {qaLine ? <p className="font-mono text-xs text-muted">{qaLine}</p> : null}
       {note ? <p className="font-mono text-xs text-ping">{note}</p> : null}

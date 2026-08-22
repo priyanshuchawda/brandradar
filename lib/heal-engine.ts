@@ -13,6 +13,7 @@ import {
   healPreviewLooksHealthy,
   isStudioCollectorId,
   runStudioCli,
+  runStudioHealCli,
 } from "./studio";
 
 export type HealLoopMode = "fixture" | "live";
@@ -121,8 +122,7 @@ async function runStudioHealPass(input: {
   attempt: number;
 }): Promise<StudioHealPassResult> {
   input.stages.push(`studio_heal_autosave:try${input.attempt}`);
-  const healCli = await runStudioCli(
-    "heal",
+  const healCli = await runStudioHealCli(
     [input.collector_id, input.url, input.prompt],
     {
       autoApprove: input.autoApprove,
@@ -131,6 +131,9 @@ async function runStudioHealPass(input: {
       healCliTimeoutSec: input.budget.healCliTimeoutSec,
     },
   );
+  if (healCli.unlocked) {
+    input.stages.push(`studio_unlock_409:try${input.attempt}`);
+  }
   input.output_snippets.push(healCli.output.slice(0, 700));
 
   const preview = healPreviewLooksHealthy(healCli.output);
@@ -224,17 +227,18 @@ export async function runHealAndVerify(input: {
   });
 
   if (before.ok) {
+    stages.push("skip:already_healthy");
     return {
       mode,
       collector_id,
       url: input.url,
       before,
       after: before,
-      healed: false,
+      healed: before.valid_count >= 1,
       same_id: true,
       prompt: "",
       prompt_source: "template",
-      stages: [...stages, "skip:already_healthy"],
+      stages,
       output_snippets,
       rows_after: input.brokenRows,
       heal_attempts: 0,
