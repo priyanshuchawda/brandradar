@@ -76,7 +76,7 @@ export function resolveIntelForceMock(forceMock?: boolean): boolean {
   return process.env.USE_MOCK !== "false";
 }
 
-function expandStudioRows(rows: unknown[]): Record<string, unknown>[] {
+export function expandStudioRows(rows: unknown[]): Record<string, unknown>[] {
   const nestKeys = [
     "guides",
     "posts",

@@ -1,5 +1,24 @@
 const API = "https://discord.com/api/v10";
 
+/** Discord permission flags — https://discord.com/developers/topics/permissions */
+export const PERM = {
+  VIEW_CHANNEL: 1n << 10n,
+  SEND_MESSAGES: 1n << 11n,
+  EMBED_LINKS: 1n << 14n,
+  READ_MESSAGE_HISTORY: 1n << 16n,
+  MANAGE_MESSAGES: 1n << 13n,
+  MANAGE_CHANNELS: 1n << 4n,
+} as const;
+
+function permString(bits: bigint): string {
+  return bits.toString();
+}
+
+export const READ_ONLY_EVERYONE = {
+  allow: permString(PERM.VIEW_CHANNEL | PERM.READ_MESSAGE_HISTORY),
+  deny: permString(PERM.SEND_MESSAGES),
+};
+
 function botToken(): string {
   const token = process.env.DISCORD_BOT_TOKEN?.trim();
   if (!token) throw new Error("DISCORD_BOT_TOKEN is not set");
@@ -9,6 +28,7 @@ function botToken(): string {
 async function botFetch(
   path: string,
   init?: RequestInit,
+  attempt = 0,
 ): Promise<{ ok: boolean; status: number; json: unknown; text: string }> {
   const response = await fetch(`${API}${path}`, {
     ...init,
@@ -25,6 +45,17 @@ async function botFetch(
   } catch {
     json = null;
   }
+  if (response.status === 429 && attempt < 4) {
+    const retry =
+      json &&
+      typeof json === "object" &&
+      "retry_after" in json &&
+      typeof (json as { retry_after: unknown }).retry_after === "number"
+        ? (json as { retry_after: number }).retry_after
+        : 1;
+    await new Promise((r) => setTimeout(r, Math.ceil(retry * 1000) + 100));
+    return botFetch(path, init, attempt + 1);
+  }
   return { ok: response.ok, status: response.status, json, text };
 }
 
@@ -32,6 +63,15 @@ export async function postEmbedBrief(
   channelId: string,
   payload: { content?: string; embeds: unknown[] },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const result = await postChannelMessage(channelId, payload);
+  if (!result.ok) return result;
+  return { ok: true };
+}
+
+export async function postChannelMessage(
+  channelId: string,
+  payload: { content?: string; embeds: unknown[] },
+): Promise<{ ok: true; messageId: string } | { ok: false; error: string }> {
   const result = await botFetch(`/channels/${encodeURIComponent(channelId)}/messages`, {
     method: "POST",
     body: JSON.stringify(payload),
@@ -39,33 +79,115 @@ export async function postEmbedBrief(
   if (!result.ok) {
     return { ok: false, error: `Bot API ${result.status}: ${result.text.slice(0, 200)}` };
   }
+  const id =
+    result.json && typeof result.json === "object" && "id" in result.json
+      ? String((result.json as { id: unknown }).id)
+      : null;
+  if (!id) return { ok: false, error: "Message post returned no id" };
+  return { ok: true, messageId: id };
+}
+
+export async function pinChannelMessage(
+  channelId: string,
+  messageId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const result = await botFetch(
+    `/channels/${encodeURIComponent(channelId)}/pins/${encodeURIComponent(messageId)}`,
+    { method: "PUT" },
+  );
+  if (!result.ok) {
+    return { ok: false, error: `Pin ${result.status}: ${result.text.slice(0, 200)}` };
+  }
   return { ok: true };
+}
+
+export type GuildChannelRow = {
+  id: string;
+  name: string;
+  type: number;
+  parent_id?: string | null;
+  position?: number;
+  topic?: string | null;
+};
+
+export async function listGuildChannels(
+  guildId: string,
+): Promise<{ ok: true; channels: GuildChannelRow[] } | { ok: false; error: string }> {
+  const result = await botFetch(`/guilds/${encodeURIComponent(guildId)}/channels`);
+  if (!result.ok) {
+    return { ok: false, error: `List channels ${result.status}: ${result.text.slice(0, 200)}` };
+  }
+  const raw = Array.isArray(result.json) ? result.json : [];
+  const channels: GuildChannelRow[] = [];
+  for (const row of raw) {
+    if (!row || typeof row !== "object" || !("id" in row) || !("name" in row)) continue;
+    const r = row as {
+      id: unknown;
+      name: unknown;
+      type?: unknown;
+      parent_id?: unknown;
+      position?: unknown;
+      topic?: unknown;
+    };
+    channels.push({
+      id: String(r.id),
+      name: String(r.name),
+      type: typeof r.type === "number" ? r.type : 0,
+      parent_id: r.parent_id != null ? String(r.parent_id) : null,
+      position: typeof r.position === "number" ? r.position : 0,
+      topic: r.topic != null ? String(r.topic) : null,
+    });
+  }
+  return { ok: true, channels };
 }
 
 export async function manageGuildChannel(
   guildId: string,
   name: string,
 ): Promise<{ ok: true; channelId?: string; name?: string } | { ok: false; error: string }> {
-  const result = await botFetch(`/guilds/${encodeURIComponent(guildId)}/channels`);
-  if (!result.ok) {
-    return { ok: false, error: `List channels ${result.status}: ${result.text.slice(0, 200)}` };
-  }
-  const channels = Array.isArray(result.json) ? result.json : [];
-  const match = channels.find(
-    (row) =>
-      row &&
-      typeof row === "object" &&
-      "name" in row &&
-      String((row as { name: unknown }).name) === name &&
-      "id" in row,
-  ) as { id: string; name: string } | undefined;
+  const listed = await listGuildChannels(guildId);
+  if (!listed.ok) return listed;
+  const match = listed.channels.find((row) => row.name === name && row.type === 0);
   if (match) return { ok: true, channelId: match.id, name: match.name };
+  return { ok: true };
+}
+
+export type PermissionOverwrite = {
+  id: string;
+  type: 0 | 1;
+  allow?: string;
+  deny?: string;
+};
+
+export async function patchChannel(
+  channelId: string,
+  patch: {
+    name?: string;
+    topic?: string;
+    position?: number;
+    parent_id?: string | null;
+    permission_overwrites?: PermissionOverwrite[];
+  },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const result = await botFetch(`/channels/${encodeURIComponent(channelId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+  if (!result.ok) {
+    return { ok: false, error: `Patch channel ${result.status}: ${result.text.slice(0, 240)}` };
+  }
   return { ok: true };
 }
 
 export async function createChannel(
   guildId: string,
-  input: { name: string; topic?: string; type?: number },
+  input: {
+    name: string;
+    topic?: string;
+    type?: number;
+    parent_id?: string;
+    permission_overwrites?: PermissionOverwrite[];
+  },
 ): Promise<{ ok: true; channelId: string } | { ok: false; error: string }> {
   const result = await botFetch(`/guilds/${encodeURIComponent(guildId)}/channels`, {
     method: "POST",
@@ -73,6 +195,8 @@ export async function createChannel(
       name: input.name,
       type: input.type ?? 0,
       topic: input.topic,
+      parent_id: input.parent_id,
+      permission_overwrites: input.permission_overwrites,
     }),
   });
   if (!result.ok) {
@@ -84,6 +208,49 @@ export async function createChannel(
       : null;
   if (!id) return { ok: false, error: "Create channel returned no id" };
   return { ok: true, channelId: id };
+}
+
+export async function deleteChannel(
+  channelId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const result = await botFetch(`/channels/${encodeURIComponent(channelId)}`, {
+    method: "DELETE",
+  });
+  if (!result.ok) {
+    return { ok: false, error: `Delete channel ${result.status}: ${result.text.slice(0, 240)}` };
+  }
+  return { ok: true };
+}
+
+export async function patchGuild(
+  guildId: string,
+  patch: {
+    description?: string;
+    system_channel_id?: string;
+    rules_channel_id?: string;
+    default_message_notifications?: number;
+  },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const result = await botFetch(`/guilds/${encodeURIComponent(guildId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+  if (!result.ok) {
+    return { ok: false, error: `Patch guild ${result.status}: ${result.text.slice(0, 240)}` };
+  }
+  return { ok: true };
+}
+
+export async function reorderGuildChannels(
+  orderedChannelIds: string[],
+): Promise<{ ok: true; patched: number } | { ok: false; error: string }> {
+  let patched = 0;
+  for (let i = 0; i < orderedChannelIds.length; i++) {
+    const result = await patchChannel(orderedChannelIds[i]!, { position: i });
+    if (!result.ok) return result;
+    patched++;
+  }
+  return { ok: true, patched };
 }
 
 export type SlashCommandDef = {
@@ -118,6 +285,10 @@ export const MONDAY_DIFF_COMMANDS: SlashCommandDef[] = [
   {
     name: "rivals",
     description: "Show the Monday Diff rival cohort and update URLs",
+  },
+  {
+    name: "schema",
+    description: "Show the ListingRow + IntelSnapshot JSON contract",
   },
   {
     name: "help",

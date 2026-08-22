@@ -17,8 +17,7 @@ import { loadCohortConfig } from "@/lib/rivals";
 import { assertPublicHttpsUrl } from "@/lib/urls";
 import { intelUpdatesCollectorId } from "@/lib/brightdata";
 import { runIntelAutoHeal, healStatusDiscordEmbed } from "@/lib/intel-auto-heal";
-import { postEmbedBrief } from "@/lib/discord-api";
-import { discordConfigured, discordMode } from "@/lib/discord";
+import { discordConfigured, discordMode, postHealAlertToDiscord } from "@/lib/discord";
 import { healRuntimeBudget } from "@/lib/runtime-env";
 
 export const maxDuration = 300;
@@ -101,7 +100,6 @@ export async function POST(request: Request) {
       discordConfigured() &&
       discordMode() === "bot"
     ) {
-      const channelId = process.env.DISCORD_CHANNEL_ID!.trim();
       const payload = healStatusDiscordEmbed({
         stage: loop.healed ? "recovered" : "still_broken",
         collectorId: loop.collector_id,
@@ -110,7 +108,7 @@ export async function POST(request: Request) {
         afterCount: loop.after?.valid_count ?? 0,
         stages: loop.stages,
       });
-      const posted = await postEmbedBrief(channelId, payload);
+      const posted = await postHealAlertToDiscord(payload);
       discord = posted.ok ? { status: "posted" } : { error: posted.error };
     }
 

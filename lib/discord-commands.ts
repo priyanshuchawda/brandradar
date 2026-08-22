@@ -1,7 +1,9 @@
 import {
   buildHelpEmbed,
+  buildIntelContent,
   buildIntelEmbeds,
   buildRivalsEmbed,
+  buildSchemaEmbed,
 } from "./discord-embeds";
 import { runIntelPull } from "./intel-pull";
 
@@ -41,6 +43,12 @@ export async function resolveDiscordCommand(
       data: { embeds: [buildRivalsEmbed()] },
     };
   }
+  if (name === "schema") {
+    return {
+      type: 4,
+      data: { embeds: [buildSchemaEmbed()] },
+    };
+  }
   if (name === "intel") {
     const mode = optionValue(data, "mode") ?? "example";
     const forceMock = mode !== "live";
@@ -52,7 +60,7 @@ export async function resolveDiscordCommand(
     return {
       type: 4,
       data: {
-        content: `📅 **Monday Diff** · \`${snapshot.week}\` · ${snapshot.label}`,
+        content: buildIntelContent(snapshot),
         embeds: buildIntelEmbeds(snapshot).slice(0, 10),
       },
     };

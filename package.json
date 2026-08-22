@@ -10,7 +10,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "discord:bootstrap": "RUN_DISCORD_BOOTSTRAP=1 vitest run lib/discord-bootstrap.live.test.ts",
+    "discord:tidy": "RUN_DISCORD_BOOTSTRAP=1 vitest run lib/discord-tidy.live.test.ts --disable-console-intercept"
   },
   "dependencies": {
     "@brightdata/cli": "^0.3.5",

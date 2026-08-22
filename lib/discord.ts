@@ -1,9 +1,19 @@
 import { createChannel, manageGuildChannel, postEmbedBrief } from "./discord-api";
-import { buildIntelEmbeds } from "./discord-embeds";
+import { buildIntelContent, buildIntelEmbeds } from "./discord-embeds";
+import { healAlertChannelId } from "./discord-server";
 import type { IntelSnapshot } from "./intel-schema";
 
 export { chunkDiscordContent } from "./discord-format";
-export { buildIntelEmbeds, buildRivalsEmbed, buildHelpEmbed } from "./discord-embeds";
+export {
+  buildIntelEmbeds,
+  buildIntelContent,
+  buildRivalsEmbed,
+  buildHelpEmbed,
+  buildSchemaEmbed,
+  buildStartHereEmbed,
+  buildHealLabWelcomeEmbed,
+} from "./discord-embeds";
+export { bootstrapDiscordServer, BRANDRADAR_SERVER_LAYOUT } from "./discord-server";
 
 export function discordConfigured(): boolean {
   return Boolean(
@@ -51,7 +61,7 @@ export async function postIntelToDiscord(
   const embeds = buildIntelEmbeds(snapshot);
   // Discord allows max 10 embeds per message; we send one message with up to 10.
   const payload = {
-    content: `📅 **Monday Diff** · \`${snapshot.week}\` · ${snapshot.label}`,
+    content: buildIntelContent(snapshot),
     embeds: embeds.slice(0, 10),
   };
 
@@ -116,4 +126,16 @@ export async function ensureMondayDiffChannel(guildId: string): Promise<
     created: true,
     name: "monday-diff",
   };
+}
+
+/** Post heal broken/recovered alerts to #heal-alerts (falls back to #monday-diff). */
+export async function postHealAlertToDiscord(payload: {
+  content: string;
+  embeds: unknown[];
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const channelId = healAlertChannelId();
+  if (!channelId || !process.env.DISCORD_BOT_TOKEN?.trim()) {
+    return { ok: false, error: "DISCORD_BOT_TOKEN + heal channel not configured" };
+  }
+  return postEmbedBrief(channelId, payload);
 }

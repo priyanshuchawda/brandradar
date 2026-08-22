@@ -9,8 +9,7 @@ import {
   readJsonBody,
   withRateHeaders,
 } from "@/lib/guard";
-import { postEmbedBrief } from "@/lib/discord-api";
-import { discordConfigured, discordMode } from "@/lib/discord";
+import { discordConfigured, discordMode, postHealAlertToDiscord } from "@/lib/discord";
 import {
   brokenExtract,
   fixtureExtract,
@@ -215,7 +214,6 @@ export async function POST(request: Request) {
 
     let discord: unknown = null;
     if (parsed.data.notifyDiscord !== false && discordConfigured() && discordMode() === "bot") {
-      const channelId = process.env.DISCORD_CHANNEL_ID!.trim();
       const payload = healStatusDiscordEmbed({
         stage: loop.healed ? "recovered" : "still_broken",
         collectorId: loop.collector_id,
@@ -224,7 +222,7 @@ export async function POST(request: Request) {
         afterCount: loop.after?.valid_count ?? 0,
         stages: loop.stages,
       });
-      const posted = await postEmbedBrief(channelId, payload);
+      const posted = await postHealAlertToDiscord(payload);
       discord = posted.ok ? { status: "posted" } : { error: posted.error };
     }
 
@@ -336,7 +334,6 @@ export async function POST(request: Request) {
         { status: 503 },
       );
     }
-    const channelId = process.env.DISCORD_CHANNEL_ID!.trim();
     const payload = healLabDiscordEmbed({
       stage: "recovery",
       collectorId: healLabCollectorId() ?? "fixture",
@@ -344,7 +341,7 @@ export async function POST(request: Request) {
       afterCount: parsed.data.rowCountAfter ?? fixtureExtract().length,
       layout: layout,
     });
-    const posted = await postEmbedBrief(channelId, payload);
+    const posted = await postHealAlertToDiscord(payload);
     if (!posted.ok) {
       return NextResponse.json({ error: posted.error }, { status: 502 });
     }

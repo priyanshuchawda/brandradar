@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { postIntelToDiscord, discordConfigured, discordMode } from "@/lib/discord";
-import { postEmbedBrief } from "@/lib/discord-api";
+import { postIntelToDiscord, discordConfigured, discordMode, postHealAlertToDiscord } from "@/lib/discord";
 import { runIntelPull } from "@/lib/intel-pull";
 import {
   healStatusDiscordEmbed,
@@ -70,7 +69,7 @@ async function runCron(request: Request) {
     autoHealParam === "1" ||
     (autoHealParam !== "0" && autoHealEnabled && broken && snapshot.mode === "live");
 
-  if (broken && discordMode() === "bot" && process.env.DISCORD_CHANNEL_ID) {
+  if (broken && discordMode() === "bot") {
     const collectorId =
       snapshot.health.collector_ids[0] || intelUpdatesCollectorId() || "unknown";
     const anchor =
@@ -87,10 +86,7 @@ async function runCron(request: Request) {
         `null_rate:${snapshot.health.null_rate}`,
       ],
     });
-    const alert = await postEmbedBrief(
-      process.env.DISCORD_CHANNEL_ID.trim(),
-      payload,
-    );
+    const alert = await postHealAlertToDiscord(payload);
     healthAlert = alert.ok
       ? { status: "broken_alert_posted" }
       : { error: alert.error };
@@ -106,7 +102,7 @@ async function runCron(request: Request) {
         stages: loop.stages,
         budget: healRuntimeBudget(),
       };
-      if (discordMode() === "bot" && process.env.DISCORD_CHANNEL_ID) {
+      if (discordMode() === "bot") {
         const payload = healStatusDiscordEmbed({
           stage: loop.healed ? "recovered" : "still_broken",
           collectorId: intelCollectorId(snapshot),
@@ -115,7 +111,7 @@ async function runCron(request: Request) {
           afterCount: loop.after?.valid_count ?? 0,
           stages: loop.stages,
         });
-        await postEmbedBrief(process.env.DISCORD_CHANNEL_ID.trim(), payload);
+        await postHealAlertToDiscord(payload);
       }
     } catch (error) {
       autoHealResult = {

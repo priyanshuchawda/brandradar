@@ -19,6 +19,13 @@ describe("resolveDiscordCommand", () => {
     expect((res.data.embeds[0]?.fields?.length ?? 0) >= 4).toBe(true);
   });
 
+  it("handles /schema", async () => {
+    const res = (await resolveDiscordCommand({ name: "schema" })) as {
+      data: { embeds: Array<{ title?: string }> };
+    };
+    expect(res.data.embeds[0]?.title).toMatch(/contract/i);
+  });
+
   it("handles /intel example", async () => {
     const res = (await resolveDiscordCommand({
       name: "intel",
@@ -28,6 +35,6 @@ describe("resolveDiscordCommand", () => {
     };
     expect(res.data.content).toMatch(/Monday Diff/);
     expect(res.data.embeds.length).toBeGreaterThan(1);
-    expect(res.data.embeds.some((e) => e.title === "Plays")).toBe(true);
+    expect(res.data.embeds.some((e) => e.title?.includes("Recommended plays"))).toBe(true);
   });
 });
