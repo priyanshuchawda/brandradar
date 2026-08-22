@@ -7,13 +7,16 @@ The Collection API is documented in cURL, Node, and Python. Quality does not cha
 ## Layout
 
 ```
-app/                 Next.js App Router
-lib/bd.ts            @brightdata/sdk client (same token as Studio)
-lib/brightdata.ts    scraperStudio.run + Collection API fallback
-lib/schema.ts        Zod snapshot
-lib/plays.ts         Gaps → three plays
-lib/guard.ts         Rate limits, payload caps, optional API key
-components/          Arena, plays, collector health
+app/                      Next.js App Router (monday-diff, heal-lab, arena)
+lib/intel-*.ts            Monday Diff pull, diff, store, visibility
+lib/heal-engine.ts        Shared self-heal loop (Heal Lab + intel heal)
+lib/discord-*.ts          Embeds, bootstrap, slash commands
+lib/json-store.ts         Week snapshots (disk + optional Vercel Blob)
+lib/bd.ts                 @brightdata/sdk client
+lib/brightdata.ts         scraperStudio.run + Collection API fallback
+lib/schema.ts             Zod catalog snapshot
+lib/plays.ts              Gaps → three plays
+config/rivals.json        Monday Diff cohort
 ```
 
 | Layer | Choice |

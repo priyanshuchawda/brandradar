@@ -26,7 +26,9 @@ Fake brand: **Driftmark** (public demo only).
 2. On the app **Heal Lab** tab, click **Run full demo proof** (fixtures = free rehearsal).
 3. For live judges: enable **Live Studio**, click **Run full demo proof** again — expect `5 → 0 → 5` on the proof card, same `c_*`.
 4. If heal fails with a stuck job: **Unlock stuck job** (auto-retries on 409 during heal as well).
-5. Optional: **Post recovery to Discord**.
+5. Optional: **Post recovery to Discord** (`#heal-alerts` when `DISCORD_HEAL_CHANNEL_ID` is set).
+
+Discord server setup: `npm run discord:bootstrap` · [discord.md](discord.md)
 
 Proof card shows: mode, collector id (unchanged), row counts before/after/healed.
 

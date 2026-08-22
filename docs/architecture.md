@@ -1,60 +1,107 @@
 # Architecture
 
+BrandRadar is a **Next.js App Router** app. All Bright Data and Gemini calls run **server-side only**. The browser talks to `/api/*`.
+
+## System overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  BrandRadar (Next.js + TypeScript + Zod)                        │
+├─────────────────────────────────────────────────────────────────┤
+│  Monday Diff          Heal Lab              Catalog arena       │
+│  rival update pages   own before/after      D2C / edtech / food │
+│  week diff + plays    self-heal proof       discover + PDP      │
+└──────────┬──────────────────┬────────────────────┬────────────┘
+           │                  │                    │
+           ▼                  ▼                    ▼
+   Bright Data Studio   Bright Data Studio    Studio + Discover
+   COLLECTOR_INTEL_*    COLLECTOR_HEAL_LAB     COLLECTOR_*_*
+           │                  │                    │
+           ▼                  ▼                    ▼
+   IntelSnapshot JSON    heal-engine loop      BrandSnapshot JSON
+           │                  │                    │
+           ├──► json-store (disk / Blob)         │
+           ├──► Discord embeds                   ├──► 3 plays
+           └──► Monday Diff UI                   └──► Arena UI
+```
+
+## Monday Diff pipeline
+
+| Step | Module | Output |
+|------|--------|--------|
+| Pull | `lib/intel-pull.ts` | `IntelSnapshot` |
+| Diff | `lib/intel-diff.ts` | added / removed / modified |
+| Visibility | `lib/visibility-health.ts` | score 0–100, per-rival status |
+| Plays | `lib/plays.ts` | attack / watch / fill |
+| Persist | `lib/json-store.ts` | `data/intel/<week>/snapshot.json` |
+| Discord | `lib/discord-embeds.ts` | rich embeds → `#monday-diff` |
+| Heal | `lib/intel-auto-heal.ts` | same `c_*` via `lib/heal-engine.ts` |
+
+Cron: `app/api/cron/monday-diff/route.ts` — pull → Discord → optional auto-heal.
+
+## Heal Lab pipeline
+
+| Step | Module |
+|------|--------|
+| Extract | `lib/heal-lab.ts` → Studio run or fixture |
+| QA | `lib/extract-qa.ts` |
+| Heal loop | `lib/heal-engine.ts` — ≤2 heals, settle verify |
+| History | `lib/heal-history.ts` (gitignored on Vercel) |
+| Discord | `#heal-alerts` via `postHealAlertToDiscord` |
+
+## Catalog arena pipeline
+
 ```
 Public brand URL + domain
         │
         ▼
-┌──────────────────────────┐     Bright Data (server only)
-│  BrandRadar              │     Discover  → rival homepages
-│  Next.js App Router      │     Studio    → listing + PDP rows
-│  TypeScript + Zod        │     Heal      → same collector id
-│  Arena, plays, health    │
-└────────────┬─────────────┘
-             │ BrandSnapshot JSON
-             ▼
-     rules → 3 plays  (optional Gemini copy rewrite)
+Discover (optional) → rival homepages
+        │
+        ▼
+Studio listing + PDP collectors
+        │
+        ▼
+lib/plays.ts → 3 plays (deterministic)
 ```
 
-## Components
+## Key modules
 
 | Piece | Role |
-| --- | --- |
-| `components/scan-app.tsx` | Arena UI |
-| `app/api/scan` | Status + scan. Validates URLs, rate-limits, runs the pipeline |
-| `app/api/heal` | Break / heal / approve. Mock locally; Studio CLI when a real `c_*` is present |
-| `lib/scan.ts` | Studio first (if ready), else Discover + Gemini extract, else fixture |
-| `lib/bd.ts` | Official `@brightdata/sdk` client (same account token as Studio) |
-| `lib/brightdata.ts` | `scraperStudio.run` first; REST `/dca/trigger` + `/dca/dataset` fallback |
-| `lib/discover.ts` | Fast Discover, 5 hits, no page body, 6 hour cache |
-| `lib/plays.ts` | Signals and plays. Deterministic |
-| `lib/map-item.ts` | Studio row → `Item` |
-| `lib/guard.ts` / `lib/rate-limit.ts` / `lib/urls.ts` | Auth, quotas, public HTTPS policy |
+|-------|------|
+| `lib/bd.ts` | `@brightdata/sdk` client |
+| `lib/brightdata.ts` | `scraperStudio.run` + REST fallback |
+| `lib/studio.ts` | CLI heal/approve/run wrapper |
+| `lib/guard.ts` | Rate limits, optional API key, origin |
+| `lib/discord-server.ts` | Guild bootstrap + channel layout |
+| `lib/discord-prune.ts` | Remove junk/legacy channels |
 
-Tokens never leave the server. The browser only talks to `/api/*`.
+## Self-heal contract
 
-## Live collection
-
-1. Validate the brand URL (HTTPS, public host).
-2. Discovery collector on listing URLs (Mamaearth homepage is mapped to `/shop`).
-3. Take up to **eight** product URLs.
-4. PDP collector for prices and ratings (listing mashups are not trusted).
-5. `attachInsights` → at most three plays.
-6. Optional Flash-Lite rewrite of play text. Flash may rewrite the heal prompt when QA flags a mashed price.
-
-If Studio is not configured or fails, Discover snippets + Gemini extraction run next. If that fails, a labeled fixture is returned (development only unless `ALLOW_DEMO_FIXTURE=true`).
-
-## Self-heal
-
-Heal keeps the collector id stable:
+Heal **never** mints a new collector id:
 
 ```bash
-npx -p @brightdata/cli bdata scraper heal "$COLLECTOR_ID" "<what broke>" --url "<public-url>" --pretty
-npx -p @brightdata/cli bdata scraper approve "$COLLECTOR_ID" --url "<public-url>" --pretty
-npx -p @brightdata/cli bdata scraper run "$COLLECTOR_ID" "<public-url>" --pretty
+bdata scraper heal "$COLLECTOR_ID" "<plain language fields>" --url "<page>" --pretty
+bdata scraper approve "$COLLECTOR_ID" --url "<page>" --pretty
+bdata scraper run "$COLLECTOR_ID" "<page>" --pretty
 ```
-
-The health panel runs the same commands via `lib/studio.ts`. Mock snapshots never shell out to Studio.
 
 ## Persistence
 
-Discover responses cache under `data/cache/` (gitignored, 6 hours). Raw Studio create dumps go to `data/raw/` (gitignored). There is no database in this revision.
+| Store | Path | TTL |
+|-------|------|-----|
+| Intel weeks | `data/intel/<ISO-week>/` | Until replaced |
+| Discover cache | `data/cache/` | 6 hours |
+| Heal history | `data/heal-history/` | Append-only JSONL |
+| Vercel Blob | optional `BLOB_READ_WRITE_TOKEN` | Production week memory |
+
+No Postgres in this revision.
+
+## Discord integration
+
+HTTP Interactions (not Gateway websocket):
+
+- `POST /api/discord/interactions` — Ed25519 verify → slash handlers
+- `lib/discord-commands.ts` — `/intel`, `/rivals`, `/schema`, `/help`
+- Bootstrap: `npm run discord:bootstrap` — categories, pins, guild description
+
+See [discord.md](discord.md).

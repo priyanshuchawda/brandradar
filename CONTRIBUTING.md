@@ -21,7 +21,7 @@ npm test
 npm run lint
 ```
 
-Keep changes scoped. Match existing TypeScript, Tailwind, and Zod patterns in the files you touch.
+Docs live in `docs/` — update [README.md](README.md) and the relevant doc when you change behavior, env vars, or APIs. Hackathon/judge path: [docs/hackathon.md](docs/hackathon.md).
 
 ## Pull requests
 
