@@ -37,6 +37,20 @@ describe("diffRivalBuckets", () => {
     expect(diff.unchanged_count).toBe(1);
   });
 
+  it("detects title changes on the same URL as modified", () => {
+    const prev = bucket("roame", [
+      entry({ title: "Old title", url: "https://roame.travel/guides/keep" }),
+    ]);
+    const next = bucket("roame", [
+      entry({ title: "New title", url: "https://roame.travel/guides/keep" }),
+    ]);
+    const diff = diffRivalBuckets(prev, next);
+    expect(diff.modified).toHaveLength(1);
+    expect(diff.modified[0]?.fields).toContain("title");
+    expect(diff.added).toHaveLength(0);
+    expect(diff.unchanged_count).toBe(0);
+  });
+
   it("treats missing previous week as all added", () => {
     const next = bucket("stardrift", [
       entry({ title: "Launch", url: "https://stardrift.ai/blog/launch" }),

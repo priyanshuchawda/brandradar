@@ -30,6 +30,7 @@ Pin in `.env.local` only:
 ```bash
 COLLECTOR_INTEL_UPDATES=c_...
 USE_MOCK=false
+BLOB_READ_WRITE_TOKEN=   # Vercel production — week snapshots persist across deploys
 ```
 
 Heal keeps the **same** id: `POST /api/intel/heal` (`heal` | `approve` | `auto_loop`) or `bdata scraper heal`.
@@ -45,8 +46,9 @@ Heal keeps the **same** id: `POST /api/intel/heal` (`heal` | `approve` | `auto_l
 | Monday cron | One pull; retries hit cache |
 | Gemini on intel path | **Off** — plays are deterministic rules |
 | Strong heal `auto_loop` | Up to 2 Studio heals locally; settle verify each pass |
-| Cron QA broken | Discord alert only — no auto-heal |
-| Cron `?auto_heal=1` | Opt-in one heal loop (Vercel-safe budget) |
+| Cron QA broken | Discord alert + **auto-heal by default** when live (`INTEL_AUTO_HEAL_ON_CRON=false` to disable) |
+| Cron `?auto_heal=0` | Skip heal even when broken |
+| Cron `?auto_heal=1` | Force heal attempt |
 
 ## API
 

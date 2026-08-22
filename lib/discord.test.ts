@@ -38,6 +38,7 @@ describe("buildIntelEmbeds", () => {
             },
           ],
           removed: [],
+          modified: [],
           unchanged_count: 2,
         },
       ],

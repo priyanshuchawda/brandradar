@@ -10,7 +10,7 @@ import {
 } from "@/lib/guard";
 import { runIntelPull } from "@/lib/intel-pull";
 import { loadCohortConfig, isoWeekKey } from "@/lib/rivals";
-import { loadIntelSnapshot } from "@/lib/intel-store";
+import { loadIntelSnapshot, intelStorageInfo } from "@/lib/intel-store";
 import { intelCollectorsReady, intelUpdatesCollectorId } from "@/lib/brightdata";
 import { scanLimiter, statusLimiter } from "@/lib/rate-limit";
 import { z } from "zod";
@@ -32,6 +32,7 @@ export async function GET(request: Request) {
   const config = loadCohortConfig();
   const week = isoWeekKey();
   const cached = await loadIntelSnapshot(week);
+  const storage = intelStorageInfo();
   return withRateHeaders(
     NextResponse.json({
       cohort: config.cohort,
@@ -46,7 +47,10 @@ export async function GET(request: Request) {
       intelReady: intelCollectorsReady(),
       week,
       weekCached: Boolean(cached && cached.mode === "live"),
+      storageBackend: storage.backend,
+      storageWarning: storage.warning,
       costHint:
+        storage.warning ??
         "Default pull reuses this week's live snapshot. Pass refresh=true to spend Studio credits again.",
     }),
     quota,

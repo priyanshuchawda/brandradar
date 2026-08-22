@@ -48,7 +48,7 @@ async function runCron(request: Request) {
   }
 
   const refresh = url.searchParams.get("refresh") === "1";
-  const autoHeal = url.searchParams.get("auto_heal") === "1";
+  const autoHealParam = url.searchParams.get("auto_heal");
   const snapshot = await runIntelPull({
     forceMock: false,
     persist: true,
@@ -65,6 +65,10 @@ async function runCron(request: Request) {
   let healthAlert: unknown = null;
   let autoHealResult: unknown = null;
   const broken = snapshotLooksBroken(snapshot);
+  const autoHealEnabled = process.env.INTEL_AUTO_HEAL_ON_CRON?.trim() !== "false";
+  const autoHeal =
+    autoHealParam === "1" ||
+    (autoHealParam !== "0" && autoHealEnabled && broken && snapshot.mode === "live");
 
   if (broken && discordMode() === "bot" && process.env.DISCORD_CHANNEL_ID) {
     const collectorId =
@@ -92,7 +96,7 @@ async function runCron(request: Request) {
       : { error: alert.error };
   }
 
-  if (autoHeal && broken && snapshot.mode === "live") {
+  if (autoHeal && snapshot.mode === "live") {
     try {
       const loop = await runIntelAutoHeal({ snapshot, useGemini: false });
       autoHealResult = {

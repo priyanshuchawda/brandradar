@@ -3,10 +3,12 @@ import { playsFromIntelDiff } from "./intel-plays";
 import type { DiffChange } from "./intel-schema";
 
 const change = (over: Partial<DiffChange> & Pick<DiffChange, "rival_id" | "rival_name">): DiffChange => ({
-  added: [],
-  removed: [],
-  unchanged_count: 0,
-  ...over,
+  rival_id: over.rival_id,
+  rival_name: over.rival_name,
+  added: over.added ?? [],
+  removed: over.removed ?? [],
+  modified: over.modified ?? [],
+  unchanged_count: over.unchanged_count ?? 0,
 });
 
 describe("playsFromIntelDiff", () => {

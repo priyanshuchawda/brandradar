@@ -12,6 +12,8 @@ type IntelStatus = {
   intelReady: boolean;
   week?: string;
   weekCached?: boolean;
+  storageBackend?: string;
+  storageWarning?: string | null;
   costHint?: string;
 };
 
@@ -112,13 +114,21 @@ export function MondayDiffApp() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "heal",
+          action: "auto_loop",
           snapshot: snapshot ?? undefined,
+          notifyDiscord: discordReady,
         }),
       });
       const payload = await response.json();
       if (!response.ok) throw apiError(payload, "Heal failed", response.status);
-      setDiscordNote(payload.note ?? `Heal on ${payload.collector_id}`);
+      setDiscordNote(
+        payload.healed
+          ? `Recovered · ${payload.after?.valid_count ?? payload.count ?? "?"} rows · same ${payload.collector_id}`
+          : payload.note ?? `Heal finished on ${payload.collector_id}`,
+      );
+      if (payload.healed) {
+        await pull({ forceMock: false, refresh: true });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Heal failed");
     } finally {
@@ -206,9 +216,14 @@ export function MondayDiffApp() {
           className="min-h-11 rounded-lg border border-alert/40 px-4 text-sm text-alert disabled:opacity-40"
           title="bdata scraper heal on the same COLLECTOR_INTEL_UPDATES id"
         >
-          Heal collector
+          Heal collector (auto_loop)
         </button>
       </div>
+      {status?.storageWarning ? (
+        <p className="rounded-lg border border-alert/40 bg-alert/10 px-3 py-2 text-xs text-alert">
+          {status.storageWarning}
+        </p>
+      ) : null}
       {status?.costHint ? (
         <p className="font-mono text-[11px] text-muted">{status.costHint}</p>
       ) : null}
@@ -253,8 +268,43 @@ export function MondayDiffApp() {
 
 function Brief({ snapshot }: { snapshot: IntelSnapshot }) {
   const discord = formatIntelDiscordMessage(snapshot);
+  const vis = snapshot.visibility;
   return (
     <section className="grid gap-5">
+      {vis ? (
+        <div
+          className={`rounded-2xl border p-4 ${
+            vis.status === "healthy"
+              ? "border-ping/40 bg-ping/5"
+              : vis.status === "critical"
+                ? "border-alert/40 bg-alert/10"
+                : "border-blue/40 bg-blue/5"
+          }`}
+        >
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold">Competitive visibility</h2>
+            <p className="font-mono text-lg font-semibold text-ping">{vis.score}/100</p>
+          </div>
+          <p className="mt-1 text-sm text-muted">{vis.summary}</p>
+          <ul className="mt-3 grid gap-1 text-xs sm:grid-cols-2">
+            {vis.per_rival.map((r) => (
+              <li key={r.rival_id} className="rounded-lg border border-line/60 px-2 py-1">
+                <span className="font-medium">{r.rival_name}</span> · {r.entry_count} rows
+                {r.new_this_week > 0 ? ` · +${r.new_this_week} new` : ""}
+                {r.modified_this_week > 0 ? ` · ~${r.modified_this_week} updated` : ""}
+                {r.status === "empty" ? (
+                  <span className="text-alert"> · empty</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          {vis.heal_recommended ? (
+            <p className="mt-2 text-xs text-alert">
+              Heal recommended — QA flags or empty rivals detected.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       <div className="rounded-2xl border border-line bg-panel/50 p-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-sm font-semibold">Week {snapshot.week}</h2>
@@ -286,7 +336,9 @@ function Brief({ snapshot }: { snapshot: IntelSnapshot }) {
           {snapshot.diff.map((change) => (
             <div key={change.rival_id} className="text-sm">
               <p className="font-medium">{change.rival_name}</p>
-              {change.added.length === 0 && change.removed.length === 0 ? (
+              {change.added.length === 0 &&
+              change.removed.length === 0 &&
+              change.modified.length === 0 ? (
                 <p className="text-xs text-muted">No public updates this week</p>
               ) : null}
               <ul className="mt-1 grid gap-1 text-xs">
@@ -295,6 +347,19 @@ function Brief({ snapshot }: { snapshot: IntelSnapshot }) {
                     NEW ·{" "}
                     <a href={entry.url} className="hover:underline" target="_blank" rel="noreferrer">
                       {entry.title}
+                    </a>
+                  </li>
+                ))}
+                {change.modified.map((mod) => (
+                  <li key={`${mod.after.url}-mod`} className="text-blue">
+                    UPD · {mod.fields.join(", ")} ·{" "}
+                    <a
+                      href={mod.after.url}
+                      className="hover:underline"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {mod.after.title}
                     </a>
                   </li>
                 ))}

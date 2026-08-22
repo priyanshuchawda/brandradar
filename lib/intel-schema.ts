@@ -33,15 +33,50 @@ export const IntelPlaySchema = z.object({
 
 export type IntelPlay = z.infer<typeof IntelPlaySchema>;
 
+export const ModifiedEntrySchema = z.object({
+  before: UpdateEntrySchema,
+  after: UpdateEntrySchema,
+  fields: z.array(z.enum(["title", "summary", "published_at"])).min(1),
+});
+
+export type ModifiedEntry = z.infer<typeof ModifiedEntrySchema>;
+
 export const DiffChangeSchema = z.object({
   rival_id: z.string(),
   rival_name: z.string(),
   added: z.array(UpdateEntrySchema),
   removed: z.array(UpdateEntrySchema),
+  modified: z.array(ModifiedEntrySchema).default([]),
   unchanged_count: z.number().int().nonnegative(),
 });
 
 export type DiffChange = z.infer<typeof DiffChangeSchema>;
+
+export const VisibilityHealthSchema = z.object({
+  score: z.number().min(0).max(100),
+  status: z.enum(["healthy", "degraded", "critical"]),
+  rivals_tracked: z.number().int().nonnegative(),
+  rivals_healthy: z.number().int().nonnegative(),
+  total_entries: z.number().int().nonnegative(),
+  new_this_week: z.number().int().nonnegative(),
+  modified_this_week: z.number().int().nonnegative(),
+  removed_this_week: z.number().int().nonnegative(),
+  per_rival: z.array(
+    z.object({
+      rival_id: z.string(),
+      rival_name: z.string(),
+      entry_count: z.number().int().nonnegative(),
+      status: z.enum(["healthy", "empty", "degraded"]),
+      new_this_week: z.number().int().nonnegative(),
+      modified_this_week: z.number().int().nonnegative(),
+      removed_this_week: z.number().int().nonnegative(),
+    }),
+  ),
+  heal_recommended: z.boolean(),
+  summary: z.string(),
+});
+
+export type VisibilityHealth = z.infer<typeof VisibilityHealthSchema>;
 
 /** One weekly cohort pull (current week). Diff fields filled in Phase 2+. */
 export const IntelSnapshotSchema = z.object({
@@ -52,6 +87,7 @@ export const IntelSnapshotSchema = z.object({
   rivals: z.array(RivalUpdateBucketSchema),
   diff: z.array(DiffChangeSchema).default([]),
   plays: z.array(IntelPlaySchema).default([]),
+  visibility: VisibilityHealthSchema.optional(),
   health: z.object({
     null_rate: z.number(),
     last_heal: z.string().nullable().default(null),

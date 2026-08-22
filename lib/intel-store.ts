@@ -1,50 +1,46 @@
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import path from "node:path";
-import {
-  IntelSnapshotSchema,
-  type IntelSnapshot,
-  type RivalUpdateBucket,
-} from "./intel-schema";
 import { diffCohort } from "./intel-diff";
+import { IntelSnapshotSchema, type IntelSnapshot, type RivalUpdateBucket } from "./intel-schema";
 import { isoWeekKey, loadCohortConfig } from "./rivals";
+import { computeVisibilityHealth } from "./visibility-health";
+import { jsonStoreBackend, listJsonKeys, readJson, storeWarning, writeJson } from "./json-store";
 
-const INTEL_ROOT = path.join(process.cwd(), "data", "intel");
+const INTEL_PREFIX = "intel";
 
-function weekDir(week: string): string {
-  return path.join(INTEL_ROOT, week);
-}
-
-function snapshotPath(week: string): string {
-  return path.join(weekDir(week), "snapshot.json");
+function snapshotKey(week: string): string {
+  return `${INTEL_PREFIX}/${week}/snapshot.json`;
 }
 
 export async function saveIntelSnapshot(snapshot: IntelSnapshot): Promise<string> {
   const parsed = IntelSnapshotSchema.parse(snapshot);
-  const dir = weekDir(parsed.week);
-  await mkdir(dir, { recursive: true });
-  const file = snapshotPath(parsed.week);
-  await writeFile(file, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
-  return file;
+  const key = snapshotKey(parsed.week);
+  const saved = await writeJson(key, parsed);
+  const warn = storeWarning();
+  return warn ? `${saved.backend}:${key} (${warn})` : `${saved.backend}:${key}`;
 }
 
 export async function loadIntelSnapshot(week: string): Promise<IntelSnapshot | null> {
+  const raw = await readJson(snapshotKey(week));
+  if (raw == null) return null;
   try {
-    const raw = await readFile(snapshotPath(week), "utf8");
-    return IntelSnapshotSchema.parse(JSON.parse(raw));
+    return IntelSnapshotSchema.parse(raw);
   } catch {
     return null;
   }
 }
 
 export async function listIntelWeeks(): Promise<string[]> {
-  try {
-    const names = await readdir(INTEL_ROOT);
-    return names
-      .filter((name) => /^\d{4}-W\d{2}$/.test(name))
-      .sort();
-  } catch {
-    return [];
-  }
+  const keys = await listJsonKeys(`${INTEL_PREFIX}/`);
+  const weeks = keys
+    .map((key) => {
+      const match = key.match(/intel\/(\d{4}-W\d{2})\/snapshot\.json$/);
+      return match?.[1] ?? null;
+    })
+    .filter((w): w is string => Boolean(w));
+  return [...new Set(weeks)].sort();
+}
+
+export function intelStorageInfo(): { backend: string; warning: string | null } {
+  return { backend: jsonStoreBackend(), warning: storeWarning() };
 }
 
 export async function loadPreviousIntelSnapshot(
@@ -67,10 +63,14 @@ export function attachDiff(
   } else {
     notes.push(`Diff against ${previous.week}.`);
   }
-  return IntelSnapshotSchema.parse({
+  const withDiff = IntelSnapshotSchema.parse({
     ...current,
     diff,
     notes,
+  });
+  return IntelSnapshotSchema.parse({
+    ...withDiff,
+    visibility: computeVisibilityHealth(withDiff),
   });
 }
 
