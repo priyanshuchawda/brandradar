@@ -26,7 +26,10 @@ for (const file of [".env.local", ".env"]) {
   }
 }
 
-const LIVE = process.env.RUN_DISCORD_BOOTSTRAP === "1";
+const LIVE =
+  process.env.RUN_DISCORD_BOOTSTRAP === "1" ||
+  process.env.npm_lifecycle_event === "discord:bootstrap" ||
+  process.argv.some((a) => a.includes("discord-bootstrap"));
 
 describe.skipIf(!LIVE)("discord bootstrap (live guild)", () => {
   it(

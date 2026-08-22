@@ -35,6 +35,20 @@ describe("resolveDiscordCommand", () => {
     };
     expect(res.data.content).toMatch(/Monday Diff/);
     expect(res.data.embeds.length).toBeGreaterThan(1);
-    expect(res.data.embeds.some((e) => e.title?.includes("Recommended plays"))).toBe(true);
+  });
+
+  it("handles /company roame", async () => {
+    const res = (await resolveDiscordCommand({
+      name: "company",
+      options: [
+        { name: "name", type: 3, value: "roame" },
+        { name: "mode", type: 3, value: "example" },
+      ],
+    })) as {
+      data: { content: string; embeds: Array<{ title?: string }> };
+    };
+    expect(res.data.content).toMatch(/Roame/);
+    expect(res.data.embeds.length).toBeGreaterThanOrEqual(3);
+    expect(res.data.embeds.some((e) => e.title?.includes("Strategic Direction"))).toBe(true);
   });
 });

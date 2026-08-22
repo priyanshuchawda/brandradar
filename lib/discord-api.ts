@@ -283,8 +283,36 @@ export const MONDAY_DIFF_COMMANDS: SlashCommandDef[] = [
     ],
   },
   {
+    name: "company",
+    description: "Get deep-dive intel, strategic direction & counter-plays for a specific rival",
+    options: [
+      {
+        name: "name",
+        description: "Company / rival identifier",
+        type: 3,
+        required: true,
+        choices: [
+          { name: "roame", value: "roame" },
+          { name: "stardrift", value: "stardrift" },
+          { name: "pointhound", value: "pointhound" },
+          { name: "rove", value: "rove" },
+        ],
+      },
+      {
+        name: "mode",
+        description: "live Studio pull or example fixture",
+        type: 3,
+        required: false,
+        choices: [
+          { name: "example", value: "example" },
+          { name: "live", value: "live" },
+        ],
+      },
+    ],
+  },
+  {
     name: "rivals",
-    description: "Show the Monday Diff rival cohort and update URLs",
+    description: "Show the Monday Diff rival cohort, update URLs, and dedicated channels",
   },
   {
     name: "schema",

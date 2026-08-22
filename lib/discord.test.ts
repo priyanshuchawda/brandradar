@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { chunkDiscordContent } from "./discord-format";
 import {
+  analyzeStrategicDirection,
+  buildCompanyDossierEmbed,
+  buildCompanyIntelEmbeds,
   buildHelpEmbed,
   buildIntelContent,
   buildIntelEmbeds,
@@ -96,7 +99,95 @@ describe("static embeds", () => {
   it("builds rivals, help, and schema", () => {
     expect(buildRivalsEmbed().fields?.length).toBeGreaterThanOrEqual(4);
     expect(buildHelpEmbed().fields?.some((f) => f.name === "/intel")).toBe(true);
+    expect(buildHelpEmbed().fields?.some((f) => f.name === "/company")).toBe(true);
     expect(buildHelpEmbed().fields?.some((f) => f.name === "/schema")).toBe(true);
     expect(buildSchemaEmbed().title).toMatch(/contract/i);
+  });
+});
+
+describe("company dedicated channel embeds & analysis", () => {
+  const sampleRival = {
+    id: "roame",
+    name: "Roame",
+    homepage: "https://roame.travel",
+    update_url: "https://roame.travel/guides",
+    surface: "guides" as const,
+    notes: "Product guides double as release notes (airline/hotel coverage).",
+  };
+
+  it("builds a pinned master dossier embed for a company", () => {
+    const dossier = buildCompanyDossierEmbed(sampleRival);
+    expect(dossier.title).toMatch(/Roame/);
+    expect(dossier.title).toMatch(/Master Intelligence Dossier/);
+    expect(dossier.description).toContain("https://roame.travel/guides");
+    expect(dossier.fields?.some((f) => f.name === "Channel Purpose & Capabilities")).toBe(true);
+  });
+
+  it("analyzes strategic direction and velocity from entries and diffs", () => {
+    const entries = [
+      {
+        title: "EVA Air Sweet Spots and Mileage Transfer",
+        url: "https://roame.travel/guides/eva-air",
+        published_at: "2026-08-15T00:00:00Z",
+        summary: "Comprehensive guide to redeeming EVA Air business class flights using transfer partners.",
+      },
+      {
+        title: "AI Booking Assistant Launch v2",
+        url: "https://roame.travel/guides/ai-assistant",
+        published_at: "2026-08-18T00:00:00Z",
+        summary: "Automated alert engine that books award flights using AI.",
+      },
+    ];
+    const diff = {
+      rival_id: "roame",
+      rival_name: "Roame",
+      added: [entries[1]],
+      removed: [],
+      modified: [],
+      unchanged_count: 1,
+    };
+
+    const analysis = analyzeStrategicDirection(entries, diff, sampleRival.notes);
+    expect(analysis.velocity).toMatch(/Active Expansion/);
+    expect(analysis.themes.some((t) => t.includes("Flight") || t.includes("AI"))).toBe(true);
+    expect(analysis.direction.length).toBeGreaterThan(15);
+  });
+
+  it("builds company deep-dive intel embeds for dedicated channels", () => {
+    const entries = [
+      {
+        title: "Qatar Airways Avios Transfer Matrix",
+        url: "https://roame.travel/guides/qatar-avios",
+        published_at: "2026-08-20T00:00:00Z",
+        summary: "How to transfer Citi and Amex points to Qatar Airways Avios.",
+      },
+    ];
+    const embeds = buildCompanyIntelEmbeds(sampleRival, {
+      bucket: {
+        rival_id: "roame",
+        rival_name: "Roame",
+        update_url: "https://roame.travel/guides",
+        surface: "guides",
+        entries,
+        collector_id: "c_test123",
+        scraped_at: "2026-08-22T00:00:00Z",
+      },
+      diff: {
+        rival_id: "roame",
+        rival_name: "Roame",
+        added: entries,
+        removed: [],
+        modified: [],
+        unchanged_count: 0,
+      },
+      week: "2026-W34",
+      collectorId: "c_test123",
+    });
+
+    expect(embeds.length).toBeGreaterThanOrEqual(3);
+    expect(embeds[0]?.title).toMatch(/Roame · Week 2026-W34/);
+    expect(embeds.some((e) => e.title?.includes("Strategic Direction & Trajectory"))).toBe(true);
+    expect(embeds.some((e) => e.title?.includes("Targeted Counter-Strategies"))).toBe(true);
+    expect(embeds.some((e) => e.title?.includes("History & Scraped Updates Feed"))).toBe(true);
   });
 });

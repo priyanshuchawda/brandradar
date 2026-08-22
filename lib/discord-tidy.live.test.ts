@@ -28,7 +28,9 @@ for (const file of [".env.local", ".env"]) {
   }
 }
 
-const LIVE = process.env.RUN_DISCORD_BOOTSTRAP === "1";
+const LIVE =
+  process.env.RUN_DISCORD_BOOTSTRAP === "1" ||
+  process.argv.some((a) => a.includes("discord-tidy.live.test.ts"));
 
 describe.skipIf(!LIVE)("discord tidy (live guild)", () => {
   it(

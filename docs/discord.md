@@ -52,11 +52,24 @@ Add `DISCORD_PUBLIC_KEY` from General Information → Public Key.
 | **START HERE** | `#start-here` | 2-min judge path (system channel) |
 | **START HERE** | `#slash-commands` | Command reference (read-only) |
 | **START HERE** | `#schema` | JSON contract (read-only, pinned) |
-| **MONDAY DIFF** | `#monday-diff` | Weekly briefs · `/intel` |
-| **MONDAY DIFF** | `#cohort-rivals` | Rival list (read-only) |
+| **MONDAY DIFF** | `#monday-diff` | Weekly cohort briefs · `/intel` |
+| **MONDAY DIFF** | `#cohort-rivals` | Cohort directory (read-only) |
+| **COMPANIES** | `#roame` | Roame history, guides, direction & counter-plays |
+| **COMPANIES** | `#stardrift` | Stardrift engineering/blog feed & strategy |
+| **COMPANIES** | `#pointhound` | Pointhound posts, sweet spots & tactical plays |
+| **COMPANIES** | `#rove` | Rove updates, release notes & counter-plays |
 | **HEAL LAB** | `#heal-alerts` | broken → recovered |
 | **HEAL LAB** | `#demo-links` | Video URLs (read-only) |
 | **HACKATHON** | `#hackathon-track` | Submission story (read-only) |
+
+## Dedicated Company Channels Architecture
+
+Every scraped competitor has a **dedicated, persistent channel** in Discord under the `COMPANIES` category:
+
+1. **Pinned Master Dossier**: Pinned profile on channel creation with homepage, update surface, collector ID, and strategic background.
+2. **Update History & Timestamped Feed**: Chronological log of all scraped guides, blogs, and changelogs formatted with Discord native timestamps (`<t:UNIX:D>` and `<t:UNIX:R>`).
+3. **Strategic Direction & Momentum Analysis**: Automated extraction of focus themes (Flight Coverage, AI Automation, Points Sweet Spots, etc.) and shipping velocity.
+4. **Targeted Counter-Strategies**: Specific `Attack`, `Defend`, `Fill`, and `Watch` tactical plays synthesized directly against that company.
 
 ## Env
 
@@ -75,15 +88,20 @@ DISCORD_SCHEMA_CHANNEL_ID=
 DISCORD_RIVALS_CHANNEL_ID=
 DISCORD_DEMO_CHANNEL_ID=
 DISCORD_SUBMISSION_CHANNEL_ID=
+DISCORD_RIVAL_ROAME_CHANNEL_ID=
+DISCORD_RIVAL_STARDRIFT_CHANNEL_ID=
+DISCORD_RIVAL_POINTHOUND_CHANNEL_ID=
+DISCORD_RIVAL_ROVE_CHANNEL_ID=
 ```
 
 ## Slash commands
 
 | Command | Effect |
 | --- | --- |
-| `/intel mode:example` | Fixture week → rich embed brief |
-| `/intel mode:live` | Studio pull (`COLLECTOR_INTEL_UPDATES`) |
-| `/rivals` | Cohort + update URLs |
+| `/intel mode:example` | Fixture week → rich cohort brief in `#monday-diff` |
+| `/intel mode:live` | Real Bright Data pull (`COLLECTOR_INTEL_UPDATES`) |
+| `/company name:roame` | Deep-dive intel dossier, trajectory & plays for a specific rival |
+| `/rivals` | Cohort directory + update URLs + channel links |
 | `/schema` | ListingRow + IntelSnapshot contract |
 | `/help` | Channel map + app links |
 

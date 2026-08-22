@@ -12,6 +12,7 @@ import {
 } from "./discord-api";
 import {
   buildCommandsEmbed,
+  buildCompanyDossierEmbed,
   buildDemoLinksEmbed,
   buildHealLabWelcomeEmbed,
   buildMondayDiffWelcomeEmbed,
@@ -22,6 +23,8 @@ import {
   buildSubmissionEmbed,
 } from "./discord-embeds";
 import { BRAND } from "./discord-brand";
+import { loadCohortConfig } from "./rivals";
+import type { RivalConfig } from "./intel-schema";
 
 const CATEGORY_TYPE = 4;
 const TEXT_TYPE = 0;
@@ -36,6 +39,24 @@ export type ServerChannelSpec = {
   welcome?: () => { content?: string; embeds: unknown[] };
   envKey?: string;
 };
+
+export function getCohortCompanyChannelSpecs(): ServerChannelSpec[] {
+  try {
+    const config = loadCohortConfig();
+    return config.rivals.map((rival, index) => ({
+      name: rival.id.toLowerCase(),
+      category: "COMPANIES",
+      order: 20 + index,
+      topic: `${rival.name} (${rival.homepage}) · Updates: ${rival.update_url} · ${rival.surface} intel & strategy`,
+      readOnly: false,
+      pinWelcome: true,
+      welcome: () => ({ embeds: [buildCompanyDossierEmbed(rival)] }),
+      envKey: `DISCORD_RIVAL_${rival.id.toUpperCase()}_CHANNEL_ID`,
+    }));
+  } catch {
+    return [];
+  }
+}
 
 export const BRANDRADAR_SERVER_LAYOUT: ServerChannelSpec[] = [
   {
@@ -62,7 +83,7 @@ export const BRANDRADAR_SERVER_LAYOUT: ServerChannelSpec[] = [
     name: "slash-commands",
     category: "START HERE",
     order: 2,
-    topic: "/intel · /rivals · /schema · /help",
+    topic: "/intel · /company · /rivals · /schema · /help",
     readOnly: true,
     pinWelcome: true,
     welcome: () => ({ embeds: [buildCommandsEmbed()] }),
@@ -97,10 +118,11 @@ export const BRANDRADAR_SERVER_LAYOUT: ServerChannelSpec[] = [
     welcome: () => ({ embeds: [buildRivalsEmbed()] }),
     envKey: "DISCORD_RIVALS_CHANNEL_ID",
   },
+  ...getCohortCompanyChannelSpecs(),
   {
     name: "heal-alerts",
     category: "HEAL LAB",
-    order: 20,
+    order: 30,
     topic: "broken → self-heal → recovered · same c_* id",
     pinWelcome: true,
     welcome: () => ({ embeds: [buildHealLabWelcomeEmbed()] }),
@@ -109,7 +131,7 @@ export const BRANDRADAR_SERVER_LAYOUT: ServerChannelSpec[] = [
   {
     name: "demo-links",
     category: "HEAL LAB",
-    order: 21,
+    order: 31,
     topic: "App + before/after URLs for video",
     readOnly: true,
     pinWelcome: true,
@@ -119,7 +141,7 @@ export const BRANDRADAR_SERVER_LAYOUT: ServerChannelSpec[] = [
   {
     name: "hackathon-track",
     category: "HACKATHON",
-    order: 30,
+    order: 40,
     topic: "WeMakeDevs × Bright Data · submission notes",
     readOnly: true,
     pinWelcome: true,

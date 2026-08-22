@@ -1,4 +1,5 @@
 import {
+  buildCompanyIntelEmbeds,
   buildHelpEmbed,
   buildIntelContent,
   buildIntelEmbeds,
@@ -6,6 +7,7 @@ import {
   buildSchemaEmbed,
 } from "./discord-embeds";
 import { runIntelPull } from "./intel-pull";
+import { loadCohortConfig } from "./rivals";
 
 export type InteractionOption = {
   name: string;
@@ -47,6 +49,45 @@ export async function resolveDiscordCommand(
     return {
       type: 4,
       data: { embeds: [buildSchemaEmbed()] },
+    };
+  }
+  if (name === "company") {
+    const rivalName = (optionValue(data, "name") ?? "roame").toLowerCase();
+    const mode = optionValue(data, "mode") ?? "example";
+    const forceMock = mode !== "live";
+    const snapshot = await runIntelPull({
+      forceMock,
+      persist: !forceMock,
+      refresh: false,
+    });
+    const config = loadCohortConfig();
+    const rival = config.rivals.find(
+      (r) => r.id.toLowerCase() === rivalName || r.name.toLowerCase() === rivalName,
+    );
+    if (!rival) {
+      return {
+        type: 4,
+        data: {
+          content: `Unknown rival \`${rivalName}\`. Valid options: ${config.rivals.map((r) => `\`${r.id}\``).join(", ")}.`,
+        },
+      };
+    }
+    const bucket = snapshot.rivals.find((r) => r.rival_id === rival.id);
+    const diff = snapshot.diff.find((d) => d.rival_id === rival.id);
+    const embeds = buildCompanyIntelEmbeds(rival, {
+      bucket,
+      diff,
+      plays: snapshot.plays,
+      week: snapshot.week,
+      visibility: snapshot.visibility,
+      collectorId: bucket?.collector_id ?? snapshot.health.collector_ids[0],
+    });
+    return {
+      type: 4,
+      data: {
+        content: `🏢 **Deep-Dive Intel Report:** \`${rival.name}\` (Week \`${snapshot.week}\`)`,
+        embeds,
+      },
     };
   }
   if (name === "intel") {
