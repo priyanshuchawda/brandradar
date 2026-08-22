@@ -1,4 +1,6 @@
 import { HEAL_LAB_BRAND, HEAL_LAB_POSTS, healLabPostUrl } from "./heal-lab-data";
+import { hasBrightDataToken, triggerWithUrl } from "./brightdata";
+import { isVercelRuntime } from "./runtime-env";
 import { extractJsonBlob, isStudioCollectorId, runStudioCli, runStudioHealCli, unlockStuckRefactorJob } from "./studio";
 
 export type HealLabLayout = "before" | "after" | "live";
@@ -98,6 +100,17 @@ export async function runHealLabCollector(
     return { ok: false, error: "COLLECTOR_HEAL_LAB is not set" };
   }
   const url = healLabUrl(layout);
+
+  if (isVercelRuntime() && hasBrightDataToken()) {
+    try {
+      const parsed = await triggerWithUrl(id, url);
+      const rows = mapHealLabRows(Array.isArray(parsed) ? parsed : [parsed]);
+      return { ok: true, rows, raw: JSON.stringify(parsed).slice(0, 2000) };
+    } catch {
+      // fall through to bundled bdata CLI
+    }
+  }
+
   const result = await runStudioCli("run", [id, url]);
   if (!result.ok) {
     return { ok: false, error: result.output.slice(0, 400) || "Studio run failed" };

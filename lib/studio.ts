@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import path from "node:path";
 import { collectorIdFor } from "./brightdata";
 import type { Snapshot } from "./schema";
 
@@ -93,6 +94,10 @@ export async function unlockStuckRefactorJob(
   });
 }
 
+function bdataEntrypoint(): string {
+  return path.join(process.cwd(), "node_modules", "@brightdata/cli", "dist", "index.js");
+}
+
 function bdataArgs(
   action: "run" | "heal" | "approve",
   args: string[],
@@ -100,14 +105,11 @@ function bdataArgs(
 ): string[] {
   const [collectorId, url, prompt] = args;
   if (action === "run") {
-    return ["-p", "@brightdata/cli", "bdata", "scraper", "run", collectorId, url, "--pretty"];
+    return ["scraper", "run", collectorId, url, "--pretty"];
   }
   if (action === "heal") {
     const timeoutSec = options?.healCliTimeoutSec ?? studioHealCliTimeoutSec();
     const out = [
-      "-p",
-      "@brightdata/cli",
-      "bdata",
       "scraper",
       "heal",
       collectorId,
@@ -118,24 +120,13 @@ function bdataArgs(
       "--timeout",
       String(timeoutSec),
     ];
-    // BD Workflow 2: preview≠published unless we approve+save through to done.
     if (options?.autoApprove !== false) {
       out.push("--auto-approve");
       if (options?.autoSave !== false) out.push("--auto-save");
     }
     return out;
   }
-  const approve = [
-    "-p",
-    "@brightdata/cli",
-    "bdata",
-    "scraper",
-    "approve",
-    collectorId,
-    "--url",
-    url,
-    "--pretty",
-  ];
+  const approve = ["scraper", "approve", collectorId, "--url", url, "--pretty"];
   if (options?.reject) approve.push("--reject");
   else if (options?.autoSave !== false) approve.push("--auto-save");
   return approve;
@@ -178,9 +169,14 @@ export async function runStudioCli(
     (action === "heal" ? studioHealTimeoutMs() : STUDIO_RUN_TIMEOUT_MS);
 
   return new Promise((resolve) => {
-    const child = spawn("npx", bdataArgs(action, args, options), {
+    const cliArgs = bdataArgs(action, args, options);
+    const child = spawn(process.execPath, [bdataEntrypoint(), ...cliArgs], {
       cwd: process.cwd(),
-      env: studioEnv(),
+      env: {
+        ...studioEnv(),
+        HOME: process.env.HOME || "/tmp",
+        npm_config_cache: "/tmp/.npm",
+      },
       timeout: timeoutMs,
     });
     let output = "";
