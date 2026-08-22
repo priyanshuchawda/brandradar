@@ -70,7 +70,17 @@ Toggle **Live Studio** in the Heal Lab tab only when you intend to spend credits
 
 `GET/POST /api/heal-lab` — actions: `run`, `heal`, `approve`, `discord`, `auto_loop`, fixtures.
 
-## Combo with Monday Diff
+## Same-URL stress (`/heal-lab/live`)
+
+Stable link for real break→heal tests (classes, CTA positions, nested titles):
+
+1. Deploy with `HEAL_LAB_LIVE_VARIANT = "classic"` in `lib/heal-lab-live.ts`
+2. `bdata scraper run $COLLECTOR_HEAL_LAB https://brandradar-beta.vercel.app/heal-lab/live`
+3. Flip to `"redesign-v2"`, merge, redeploy (URL unchanged)
+4. Re-run same collector on the same URL → expect empty/broken
+5. Heal + approve + re-run → expect rows back
+
+Before/after pages stay as the static judge demo.
 
 | Surface | Role |
 | --- | --- |

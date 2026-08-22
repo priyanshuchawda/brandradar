@@ -43,7 +43,7 @@ const BodySchema = z.object({
     "discord",
     "auto_loop",
   ]),
-  layout: z.enum(["before", "after"]).optional(),
+  layout: z.enum(["before", "after", "live"]).optional(),
   /** Skip Studio — zero credits (local demos). */
   forceMock: z.boolean().optional(),
   rowCountBefore: z.number().int().min(0).optional(),
@@ -60,11 +60,12 @@ export async function GET() {
     brand: HEAL_LAB_BRAND.name,
     before: healLabUrl("before"),
     after: healLabUrl("after"),
+    live: healLabUrl("live"),
     collector: id,
     ready: Boolean(id && isStudioCollectorId(id)),
     discord: discordConfigured(),
     costHint:
-      "Use forceMock/fixture locally. Live Studio run only against the small Heal Lab page (≤5 posts).",
+      "Use forceMock/fixture locally. Same-URL stress: /heal-lab/live (flip HEAL_LAB_LIVE_VARIANT + redeploy).",
   });
 }
 
@@ -164,7 +165,7 @@ export async function POST(request: Request) {
 
   if (parsed.data.action === "auto_loop") {
     const collectorId = healLabCollectorId() ?? "c_fixture_heal_lab";
-    const url = healLabUrl("after");
+    const url = healLabUrl(layout === "before" ? "after" : layout);
     const loop = await runHealAndVerify({
       collectorId,
       url,
@@ -177,7 +178,9 @@ export async function POST(request: Request) {
       useGemini: parsed.data.useGemini === true,
       rerun: async () => {
         if (forceMock) return fixtureExtract();
-        const result = await runHealLabCollector("after");
+        const result = await runHealLabCollector(
+          layout === "before" ? "after" : layout,
+        );
         if (!result.ok) return [];
         return result.rows;
       },

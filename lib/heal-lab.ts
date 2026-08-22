@@ -1,7 +1,7 @@
 import { HEAL_LAB_BRAND, HEAL_LAB_POSTS, healLabPostUrl } from "./heal-lab-data";
 import { isStudioCollectorId, runStudioCli } from "./studio";
 
-export type HealLabLayout = "before" | "after";
+export type HealLabLayout = "before" | "after" | "live";
 
 export type HealLabExtract = {
   title: string;
@@ -129,8 +129,8 @@ export async function healHealLabCollector(prompt?: string): Promise<{
   }
   const text =
     prompt ||
-    "Changelog listing broke after redesign. Extract each public post: title, absolute url, published_at, short summary. Prefer data-test attributes if present. Listing page only — do not open detail pages.";
-  const result = await runStudioCli("heal", [id, healLabUrl("after"), text]);
+    "Changelog listing broke after redesign. Extract each public post: title, absolute url, published_at, short summary. Prefer data-dm / data-test attributes if present. Titles may be inside buttons or CTAs. Listing page only — do not open detail pages.";
+  const result = await runStudioCli("heal", [id, healLabUrl("live"), text]);
   return { ok: result.ok, output: result.output, collector_id: id };
 }
 
