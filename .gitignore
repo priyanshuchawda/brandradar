@@ -58,6 +58,8 @@ data/intel/**
 !data/intel/.gitkeep
 data/heal-history/**
 !data/heal-history/.gitkeep
+data/crawls/**
+!data/crawls/.gitkeep
 
 # local ops scripts (push, deploy) — not shipped in the public repo
 /scripts/

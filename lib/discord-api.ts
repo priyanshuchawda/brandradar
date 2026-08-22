@@ -1,13 +1,12 @@
 const API = "https://discord.com/api/v10";
 
-/** Discord permission flags — https://discord.com/developers/topics/permissions */
 export const PERM = {
-  VIEW_CHANNEL: 1n << 10n,
-  SEND_MESSAGES: 1n << 11n,
-  EMBED_LINKS: 1n << 14n,
-  READ_MESSAGE_HISTORY: 1n << 16n,
-  MANAGE_MESSAGES: 1n << 13n,
-  MANAGE_CHANNELS: 1n << 4n,
+  VIEW_CHANNEL: BigInt(1) << BigInt(10),
+  SEND_MESSAGES: BigInt(1) << BigInt(11),
+  EMBED_LINKS: BigInt(1) << BigInt(14),
+  READ_MESSAGE_HISTORY: BigInt(1) << BigInt(16),
+  MANAGE_MESSAGES: BigInt(1) << BigInt(13),
+  MANAGE_CHANNELS: BigInt(1) << BigInt(4),
 } as const;
 
 function permString(bits: bigint): string {

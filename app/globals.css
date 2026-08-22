@@ -1,60 +1,114 @@
 @import "tailwindcss";
 
+/* ─── BrandRadar Design Tokens ──────────────────────────────────────────── */
+
 :root {
-  --bg: #07080c;
-  --bg-2: #0c0f16;
-  --panel: #11151d;
-  --panel-2: #171c26;
-  --line: #262c38;
-  --text: #eef2f7;
-  --muted: #8b93a7;
-  --ping: #5cffb1;
-  --ping-dim: #1d4d38;
-  --warn: #ffb020;
-  --alert: #ff5d6a;
-  --blue: #7aa2ff;
+  --ink:       #000000;
+  --paper:     #ffffff;
+  --mid:       #777777;
+  --dim:       #333333;
+  --ghost:     #111111;
+  --border:    #222222;
+  --border-hi: #555555;
 }
 
 @theme inline {
-  --color-bg: var(--bg);
-  --color-panel: var(--panel);
-  --color-line: var(--line);
-  --color-text: var(--text);
-  --color-muted: var(--muted);
-  --color-ping: var(--ping);
-  --color-warn: var(--warn);
-  --color-alert: var(--alert);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ink:       var(--ink);
+  --color-paper:     var(--paper);
+  --color-mid:       var(--mid);
+  --color-dim:       var(--dim);
+  --color-ghost:     var(--ghost);
+  --color-border:    var(--border);
+  --color-border-hi: var(--border-hi);
+  --font-sans:  var(--font-geist-sans);
+  --font-mono:  var(--font-geist-mono);
 }
 
-* {
-  box-sizing: border-box;
+/* ─── Reset ─────────────────────────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
 }
 
-html,
 body {
-  background: var(--bg);
-  color: var(--text);
-  -webkit-text-size-adjust: 100%;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-body {
-  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  min-height: 100%;
-  min-height: 100dvh;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
-    env(safe-area-inset-left);
+/* ─── Coordinate grid — used only on the canvas background ──────────────── */
+
+.market-grid {
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -10%, #14332655, transparent),
-    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
-:focus-visible {
-  outline: 2px solid var(--ping);
-  outline-offset: 2px;
+/* ─── Halftone fill patterns ────────────────────────────────────────────── */
+
+.ht-dense {
+  background-image: radial-gradient(#fff 1.1px, transparent 1.1px);
+  background-size: 4px 4px;
 }
 
-::selection {
-  background: #5cffb133;
+.ht-mid {
+  background-image: radial-gradient(#aaa 1px, transparent 1px);
+  background-size: 6px 6px;
 }
+
+.ht-sparse {
+  background-image: radial-gradient(#444 0.8px, transparent 0.8px);
+  background-size: 9px 9px;
+}
+
+/* ─── Pixel rendering ────────────────────────────────────────────────────── */
+
+.px-crisp {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ─── Minimal scrollbars ────────────────────────────────────────────────── */
+
+::-webkit-scrollbar        { width: 3px; height: 3px; }
+::-webkit-scrollbar-track  { background: #000; }
+::-webkit-scrollbar-thumb  { background: #333; }
+
+/* ─── Focus ─────────────────────────────────────────────────────────────── */
+
+:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
+
+/* ─── Selection ─────────────────────────────────────────────────────────── */
+
+::selection { background: #fff; color: #000; }
+
+/* ─── Motion preference ─────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* ─── New-item ping ring ────────────────────────────────────────────────── */
+
+@keyframes ping {
+  0%   { r: 0; opacity: 0.5; }
+  60%  { opacity: 0.25; }
+  100% { r: 28; opacity: 0; }
+}
+
+/* ─── Number slot transition — used by inspector item counts ────────────── */
+
+@keyframes countUp {
+  from { transform: translateY(6px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+
+.count-tick {
+  animation: countUp 0.22s ease-out forwards;
+}
+

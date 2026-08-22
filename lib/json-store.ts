@@ -76,13 +76,16 @@ export async function listJsonKeys(prefix: string): Promise<string[]> {
     const names = await readdir(root, { withFileTypes: true });
     const out: string[] = [];
     for (const entry of names) {
-      if (!entry.isDirectory()) continue;
-      const snap = `${normalized}${entry.name}/snapshot.json`;
-      try {
-        await readFile(diskPath(snap));
-        out.push(snap);
-      } catch {
-        // skip incomplete weeks
+      if (entry.isFile() && entry.name.endsWith(".json")) {
+        out.push(`${normalized}${entry.name}`);
+      } else if (entry.isDirectory()) {
+        const snap = `${normalized}${entry.name}/snapshot.json`;
+        try {
+          await readFile(diskPath(snap));
+          out.push(snap);
+        } catch {
+          // skip incomplete subdirectories
+        }
       }
     }
     return out.sort();
