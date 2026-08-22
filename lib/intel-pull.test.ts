@@ -65,4 +65,47 @@ describe("runIntelPull", () => {
     readySpy.mockRestore();
     triggerSpy.mockRestore();
   });
+
+  it("refresh=true bypasses week cache and calls Studio", async () => {
+    const base = await runIntelPull({ forceMock: true, persist: false });
+    const liveCached = IntelSnapshotSchema.parse({
+      ...base,
+      mode: "live",
+      notes: ["seed cache"],
+      health: {
+        ...base.health,
+        collector_ids: ["c_testintelcache01"],
+      },
+    });
+
+    const loadSpy = vi
+      .spyOn(store, "loadIntelSnapshot")
+      .mockResolvedValue(liveCached);
+    const readySpy = vi.spyOn(brightdata, "intelCollectorsReady").mockReturnValue(true);
+    const idSpy = vi
+      .spyOn(brightdata, "intelUpdatesCollectorId")
+      .mockReturnValue("c_testintelcache01");
+    const triggerSpy = vi.spyOn(brightdata, "triggerWithUrls").mockResolvedValue([
+      {
+        title: "Live row",
+        url: "https://roame.travel/guides/live",
+        input_url: "https://roame.travel/guides",
+      },
+    ]);
+
+    const snapshot = await runIntelPull({
+      forceMock: false,
+      persist: false,
+      refresh: true,
+    });
+
+    expect(triggerSpy).toHaveBeenCalled();
+    expect(snapshot.mode).toBe("live");
+    expect(snapshot.notes.some((n) => n.includes("Week cache hit"))).toBe(false);
+
+    loadSpy.mockRestore();
+    readySpy.mockRestore();
+    idSpy.mockRestore();
+    triggerSpy.mockRestore();
+  });
 });
