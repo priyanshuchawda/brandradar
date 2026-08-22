@@ -24,7 +24,8 @@ components/          Arena, plays, collector health
 | Run | `@brightdata/sdk` Scraper Studio, REST fallback |
 | Create / heal | Bright Data CLI (`bdata scraper …`) |
 | Validation | Zod (`examples/sample-output.json`) |
-| Insights | Deterministic rules; Flash-Lite copy; Flash heal prompts |
+| Insights | Deterministic rules; Flash-Lite copy; Flash heal prompts (opt-in) |
+| Strong heal | QA gate → one Studio heal → verify; Discord broken/recovered |
 | Node | 20+ |
 
 ## Cost control

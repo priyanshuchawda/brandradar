@@ -19,6 +19,7 @@ import {
   loadPreviousIntelSnapshot,
   saveIntelSnapshot,
 } from "./intel-store";
+import { assessListingExtract } from "./extract-qa";
 import { playsFromIntelDiff } from "./intel-plays";
 import { isoWeekKey, loadCohortConfig } from "./rivals";
 
@@ -257,8 +258,10 @@ export async function runIntelPull(input?: {
     if (!forceMock && intelCollectorsReady()) {
       try {
         const live = await pullLiveBuckets();
-        const emptyRate =
-          live.rivals.filter((r) => r.entries.length === 0).length / Math.max(live.rivals.length, 1);
+        const flatRows = live.rivals.flatMap((r) => r.entries);
+        const assessment = assessListingExtract(flatRows, { minRows: 1 });
+        const emptyRivals = live.rivals.filter((r) => r.entries.length === 0).length;
+        const emptyRate = emptyRivals / Math.max(live.rivals.length, 1);
         snapshot = IntelSnapshotSchema.parse({
           cohort: config.cohort,
           label: config.label,
@@ -268,19 +271,26 @@ export async function runIntelPull(input?: {
           diff: [],
           plays: [],
           health: {
-            null_rate: emptyRate,
+            null_rate: assessment.null_rate,
             last_heal: null,
             collector_ids: [live.collectorId],
-            broken_fields: emptyRate > 0.5 ? ["entries"] : [],
-            qa_flags: emptyRate > 0.5 ? ["empty_cohort"] : [],
-            heal_hint:
+            broken_fields:
               emptyRate > 0.5
-                ? "Listing extract returned empty rows for most rivals. Heal the same COLLECTOR_INTEL_UPDATES id."
+                ? ["entries", ...assessment.broken_fields]
+                : assessment.broken_fields,
+            qa_flags: [
+              ...(emptyRate > 0.5 ? ["empty_cohort"] : []),
+              ...assessment.qa_flags,
+            ],
+            heal_hint:
+              emptyRate > 0.5 || !assessment.ok
+                ? assessment.heal_hint
                 : null,
           },
           mode: "live",
           notes: [
             `Studio collector ${live.collectorId} on ${Math.min(config.rivals.length, MAX_INTEL_URLS)} update URLs.`,
+            `QA: ${assessment.status} · valid ${assessment.valid_count}/${assessment.row_count} · null_rate ${assessment.null_rate}`,
             ...live.notes,
           ],
         });

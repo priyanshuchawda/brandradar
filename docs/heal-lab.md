@@ -26,10 +26,22 @@ Heal Lab UI defaults to **fixtures** (`forceMock: true`):
 
 1. Run before → 5 rows  
 2. Run after → 0 rows  
-3. Heal → same-id story + rows restored  
-4. Post recovery to Discord  
+3. **Strong heal loop** → assess → heal → verify (same `c_*`)  
+4. Optional Discord broken/recovered embed  
 
-No Bright Data credits spent.
+No Bright Data credits spent. Gemini heal prompts are **opt-in**.
+
+## Strong heal loop
+
+Shared engine: `lib/heal-engine.ts` + listing QA in `lib/extract-qa.ts`.
+
+1. Contract gate — empty / null_rate / row_collapse  
+2. At most **one** Studio heal + approve (same collector id)  
+3. Mandatory re-run verify  
+4. History JSONL under `data/heal-history/` (gitignored)  
+5. Discord embeds for broken / recovered / still_broken  
+
+API: `POST /api/heal-lab` with `"action":"auto_loop"`. Monday Diff: `POST /api/intel/heal` with `"action":"auto_loop"`.
 
 ## Live Studio (after deploy)
 
@@ -56,7 +68,7 @@ Toggle **Live Studio** in the Heal Lab tab only when you intend to spend credits
 
 ## API
 
-`GET/POST /api/heal-lab` — actions: `run`, `heal`, `approve`, `discord`, fixtures.
+`GET/POST /api/heal-lab` — actions: `run`, `heal`, `approve`, `discord`, `auto_loop`, fixtures.
 
 ## Combo with Monday Diff
 

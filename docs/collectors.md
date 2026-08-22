@@ -42,6 +42,8 @@ Collection API in `lib/brightdata.ts` follows the official [Node starter](https:
 
 Collector id does not change. The health panel invokes the Bright Data CLI through `lib/studio.ts` when the snapshot (or env) has a real `c_*`. Mock snapshots stay in-process.
 
+**Strong loop** (Monday Diff + Heal Lab): listing QA (`lib/extract-qa.ts`) → one heal+approve → verify re-run (`lib/heal-engine.ts`). Gemini Flash may draft the heal prompt only when `useGemini:true`. Cron posts a Discord **broken** alert when QA flags fire; it does **not** auto-heal (credit gate). History: `data/heal-history/*.jsonl` (gitignored).
+
 ## Models and codegen
 
 Studio's AI Flow generates collector JavaScript; review it in the Studio UI before relying on it in production. Gemini Flash is used for fallback extract (URL context) and heal prompts. Flash-Lite is used for rival picking from Discover hits and play wording.

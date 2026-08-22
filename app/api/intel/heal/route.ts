@@ -16,21 +16,33 @@ import { intelUpdatesCollectorId } from "@/lib/brightdata";
 import { isStudioCollectorId, runStudioCli } from "@/lib/studio";
 import { loadCohortConfig } from "@/lib/rivals";
 import { assertPublicHttpsUrl } from "@/lib/urls";
+import { runIntelPull } from "@/lib/intel-pull";
+import {
+  healStatusDiscordEmbed,
+  runHealAndVerify,
+} from "@/lib/heal-engine";
+import { postEmbedBrief } from "@/lib/discord-api";
+import { discordConfigured, discordMode } from "@/lib/discord";
+import type { ListingRow } from "@/lib/extract-qa";
 
 export const maxDuration = 300;
 
 const BodySchema = z.object({
-  action: z.enum(["heal", "approve"]),
+  action: z.enum(["heal", "approve", "auto_loop"]),
   snapshot: IntelSnapshotSchema.optional(),
   prompt: z.string().max(MAX_HEAL_PROMPT).optional(),
+  /** Opt-in Gemini Flash draft for heal prompt (off by default). */
+  useGemini: z.boolean().optional(),
+  notifyDiscord: z.boolean().optional(),
+  forceMock: z.boolean().optional(),
 });
 
 const DEFAULT_PROMPT =
-  "Update listing extract for public blog/guides rows: title, absolute url, published_at if shown, short summary. Keep the same collector id.";
+  "Update listing extract for public blog/guides rows: title, absolute url, published_at if shown, short summary. Keep the same collector id. Listing pages only — do not open PDPs.";
 
 /**
  * Heal Monday Diff collector (same COLLECTOR_INTEL_UPDATES id).
- * Gemini is not required on this path — Studio CLI heal owns repair.
+ * `auto_loop` = assess → one heal+approve → re-pull verify (cost-capped).
  */
 export async function POST(request: Request) {
   const originBlock = enforceOrigin(request);
@@ -76,6 +88,82 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Invalid heal url" },
       { status: 400 },
+    );
+  }
+
+  if (parsed.data.action === "auto_loop") {
+    const forceMock = parsed.data.forceMock === true;
+    const prior = parsed.data.snapshot ?? (await runIntelPull({
+      forceMock,
+      persist: false,
+      refresh: !forceMock,
+    }));
+    const brokenRows: ListingRow[] = prior.rivals.flatMap((r) =>
+      r.entries.map((e) => ({
+        title: e.title,
+        url: e.url,
+        published_at: e.published_at,
+        summary: e.summary,
+      })),
+    );
+    const previousCount = prior.rivals.reduce((n, r) => n + r.entries.length, 0);
+
+    const loop = await runHealAndVerify({
+      collectorId,
+      url,
+      surface: "intel",
+      brokenRows,
+      previousCount: previousCount || null,
+      skipStudio: forceMock,
+      mode: forceMock ? "fixture" : "live",
+      userPrompt: parsed.data.prompt || prior.health.heal_hint || DEFAULT_PROMPT,
+      useGemini: parsed.data.useGemini === true,
+      rerun: async () => {
+        const next = await runIntelPull({
+          forceMock,
+          persist: !forceMock,
+          refresh: !forceMock,
+        });
+        return next.rivals.flatMap((r) =>
+          r.entries.map((e) => ({
+            title: e.title,
+            url: e.url,
+            published_at: e.published_at,
+            summary: e.summary,
+          })),
+        );
+      },
+    });
+
+    let discord: unknown = null;
+    if (
+      parsed.data.notifyDiscord !== false &&
+      discordConfigured() &&
+      discordMode() === "bot"
+    ) {
+      const channelId = process.env.DISCORD_CHANNEL_ID!.trim();
+      const payload = healStatusDiscordEmbed({
+        stage: loop.healed ? "recovered" : "still_broken",
+        collectorId: loop.collector_id,
+        url,
+        beforeCount: loop.before.valid_count,
+        afterCount: loop.after?.valid_count ?? 0,
+        stages: loop.stages,
+      });
+      const posted = await postEmbedBrief(channelId, payload);
+      discord = posted.ok ? { status: "posted" } : { error: posted.error };
+    }
+
+    return withRateHeaders(
+      NextResponse.json({
+        status: loop.healed ? "recovered" : "still_broken",
+        action: "auto_loop",
+        ...loop,
+        discord,
+        costHint:
+          "One Studio heal + one refresh verify. Gemini only if useGemini:true. Weekly cron stays on week cache.",
+      }),
+      quota,
     );
   }
 

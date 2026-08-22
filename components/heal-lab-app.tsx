@@ -29,6 +29,8 @@ export function HealLabApp() {
   const [beforeCount, setBeforeCount] = useState(0);
   /** Default true = zero Studio spend for local testing. */
   const [liveStudio, setLiveStudio] = useState(false);
+  const [useGemini, setUseGemini] = useState(false);
+  const [qaLine, setQaLine] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/heal-lab")
@@ -56,6 +58,16 @@ export function HealLabApp() {
       if (Array.isArray(payload.rows)) setRows(payload.rows);
       if (typeof payload.count === "number" && body.action === "run" && body.layout === "before") {
         setBeforeCount(payload.count);
+      }
+      if (payload.qa || payload.before) {
+        const qa = payload.qa ?? payload.after ?? payload.before;
+        if (qa && typeof qa === "object") {
+          setQaLine(
+            `QA ${qa.status} · valid ${qa.valid_count}/${qa.row_count} · null ${qa.null_rate} · ${(qa.qa_flags ?? []).join(",") || "clean"}`,
+          );
+        }
+      } else if (Array.isArray(payload.stages)) {
+        setQaLine(`Stages: ${payload.stages.join(" → ")}`);
       }
       setStage(String(payload.status ?? body.action));
       setNote(payload.note ?? null);
@@ -86,15 +98,26 @@ export function HealLabApp() {
         </p>
       </header>
 
-      <label className="flex items-center gap-2 text-sm text-muted">
-        <input
-          type="checkbox"
-          checked={liveStudio}
-          onChange={(e) => setLiveStudio(e.target.checked)}
-          className="size-4"
-        />
-        Live Studio (spends credits) — leave off for local fixture demos
-      </label>
+      <div className="flex flex-wrap gap-4 text-sm text-muted">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={liveStudio}
+            onChange={(e) => setLiveStudio(e.target.checked)}
+            className="size-4"
+          />
+          Live Studio (spends credits)
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={useGemini}
+            onChange={(e) => setUseGemini(e.target.checked)}
+            className="size-4"
+          />
+          Gemini heal prompt (opt-in)
+        </label>
+      </div>
 
       {status?.costHint ? (
         <p className="font-mono text-[11px] text-muted">{status.costHint}</p>
@@ -166,6 +189,20 @@ export function HealLabApp() {
         </button>
         <button
           type="button"
+          disabled={loading}
+          onClick={() =>
+            call({
+              action: "auto_loop",
+              useGemini,
+              notifyDiscord: Boolean(status?.discord),
+            })
+          }
+          className="min-h-11 rounded-lg bg-ping/90 px-4 text-sm font-medium text-[#04140c] disabled:opacity-50"
+        >
+          Strong heal loop (assess → heal → verify)
+        </button>
+        <button
+          type="button"
           disabled={loading || !status?.discord}
           onClick={() =>
             call({
@@ -185,6 +222,7 @@ export function HealLabApp() {
         stage={stage}
         {status?.collector ? ` · ${status.collector}` : " · set COLLECTOR_HEAL_LAB after deploy"}
       </p>
+      {qaLine ? <p className="font-mono text-xs text-muted">{qaLine}</p> : null}
       {note ? <p className="font-mono text-xs text-ping">{note}</p> : null}
       {error ? (
         <p className="rounded-lg border border-alert/40 bg-alert/10 px-3 py-2 text-sm text-alert">
